@@ -1,7 +1,5 @@
 # VBN ML Project
 
-gpu remote connection running code:
-
 initiate and activate the environment: 
 
     conda create -n "vbn_project" python=3.8.5
