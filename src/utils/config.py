@@ -8,7 +8,7 @@ import argparse
 import pathlib
 import numpy as np
 
-from src.utils.path_helper import check_folder
+from src.utils.data_helper import check_folder
 
 
 def check_args(args):
@@ -38,22 +38,22 @@ def parse_args():
     parser = argparse.ArgumentParser(description=desc)
 
     parser.add_argument("--data_dir", type=str,
-                        # default="D:/Data/FixedCell/PFA_eGFP/cropped2d_128",
-                        default="D:/Data/FairSIM/cropped3d_128_3",
+                        default="H:/My Drive/VisnavPNGFiles/jpg Simulated Files/Raster",
                         help='The directory of the data')
-    parser.add_argument('--dataset', type=str, default='FairSIM',
-                        help='FixedCell or FairSIM')
-    parser.add_argument('--task', type=str, default='super_resolution',
-                        choices=['super_resolution'],
-                        help='What kind of task are you trying to solve?')
-    parser.add_argument('--dnn_type', type=str, default='cagan',
+    parser.add_argument('--dataset', type=str, default='VBN',
+                        choices=['FixedCell', 'FairSIM', 'VBN'])
+    parser.add_argument('--task', type=str, default=None,
+                        choices=[None, 'super_resolution'],
+                        help='What type of task are you trying to solve?')
+    parser.add_argument('--dnn_type', type=str, default='vbnnet',
                         choices=['cagan',
                                  'srgan',
                                  'ucagan',
                                  'cgan',
                                  'srgan',
                                  'ugan',
-                                 'urcan'],
+                                 'urcan',
+                                 'vbnnet'],
                         help='The type of DNN')
 
     parser.add_argument("--load_weights", type=int, default=0,
@@ -80,7 +80,7 @@ def parse_args():
     parser.add_argument("--d_opt", type=str, default="adam")
 
     default_iterations = 5000
-    parser.add_argument('--batch_size', type=int, default=2,
+    parser.add_argument('--batch_size', type=int, default=8,
                         choices=range(2, 16),
                         help='The size of batch')
     parser.add_argument('--iteration', type=int,
@@ -89,7 +89,7 @@ def parse_args():
                         type=int, default=int(1 + 10 * (np.log10(1 + default_iterations // 50))))
     parser.add_argument("--validate_interval", type=int, default=5)
     parser.add_argument("--validate_num", type=int, default=5)
-    parser.add_argument("--norm", type=str, default='prctile',
+    parser.add_argument("--norm", type=str, default='min_max',
                         help='Image normalization Method.',
                         choices=['max',
                                 'min_max',

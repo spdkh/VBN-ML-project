@@ -6,7 +6,7 @@ import datetime
 from pathlib import Path
 
 from src.utils.config import parse_args
-from src.utils.path_helper import check_folder
+from src.utils.data_helper import check_folder
 
 args = parse_args()
 

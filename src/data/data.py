@@ -7,11 +7,10 @@ from abc import ABC, abstractmethod
 import os
 
 import numpy as np
+import pandas as pd
 import tifffile as tiff
 from matplotlib import pyplot as plt
 from skimage.measure import block_reduce
-
-from src.utils.physics_informed.psf_generator import Parameters3D, cal_psf_3d, psf_estimator_3d
 
 from src.utils import const
 from src.utils import norm_helper
@@ -32,8 +31,8 @@ class Data(ABC):
 
         self.data_types = {'x': 'rawdata', 'y': 'gt'}
 
-        self.norm = getattr(norm_helper, self.args.norm + '_norm')
-        self.data_dirs = {}
+        # self.norm = getattr(norm_helper, self.args.norm + '_norm')
+        self.data_info = {}
         self.otf_path = None
 
         self.input_dim = None
@@ -48,73 +47,50 @@ class Data(ABC):
                     / self.data_groups['train'] \
                     / self.data_types['x']
 
-        in_sample_dir = \
-            input_dir / os.listdir(input_dir)[0]
-        self.input_dim = self.load_sample(in_sample_dir)
+        self.input_dim = self.load_sample(input_dir)
         print('Input Image shape:', self.input_dim)
 
         # Load Output Sample
         output_dir = const.DATA_DIR \
                      / self.data_groups['train'] \
                      / self.data_types['y']
-        out_sample_dir = \
-            output_dir / os.listdir(output_dir)[0]
 
-        self.output_dim = self.load_sample(out_sample_dir)
+        self.output_dim = self.load_sample(output_dir)
         print('Output Image shape:', self.output_dim)
 
         for data_group, data_dir in self.data_groups.items():
-            self.data_dirs[data_group] = \
+            self.data_info[data_group] = \
                 const.DATA_DIR / data_dir
             for data_type, values in self.data_types.items():
-                self.data_dirs[data_type + data_group] = \
-                    self.data_dirs[data_group] / values
+                self.data_info[data_type + data_group] = \
+                    self.data_info[data_group] / values
 
-        print(self.data_dirs)
+        print(self.data_info)
 
-    def load_sample(self, path, show=0):
+    def load_sample(self, parent_path, show=0, sep='\t'):
         """
         convert any type of data to [x, y, z, ch] then return dimension
         """
-        img = np.transpose(tiff.imread(path), (1, 2, 0))
-        img_size = list(np.shape(img))
-        if img_size[-1] % (self.args.n_phases * self.args.n_angles) == 0:
-            img_size[-1] = img_size[-1] // (self.args.n_phases * self.args.n_angles)
-            img_size.append(self.args.n_phases * self.args.n_angles)
-        else:
-            img_size.append(1)
-
-        if show:
-            plt.figure()
-            plt.imshow(img[:, :, 0])
-            plt.show()
-
-        return img_size
-
-    def calc_wf(self, image_batch):
-        """
-            Convert SIM images to wf images
-        """
-        wf_batch = []
-        for cur_img in image_batch:
-            nchannels = cur_img.shape[-1]
-
-            # WideField is the sum of angles and phases in each z patch
-            cur_wf = block_reduce(cur_img,
-                                  block_size=(1, 1, 1, nchannels),
-                                  func=np.sum,
-                                  cval=np.sum(cur_img))
-            cur_wf = self.norm(np.array(cur_wf))
-            wf_batch.append(cur_wf)
-
-        wf_batch = np.array(wf_batch)
-        wf_batch = wf_batch.reshape((wf_batch.shape[0],
-                                     self.input_dim[2],
-                                     self.input_dim[1],
-                                     self.input_dim[0],
-                                     1),
-                                    order='F').transpose((0, 2, 3, 1, 4))
-        return wf_batch
+        path = os.listdir(parent_path)[0]
+        img_formats = ['png', 'PNG', 'JPG', 'jpg', 'tif']
+        table_formats = ['xlsx', 'csv', 'txt']
+        if any(ext in path for ext in img_formats):
+            sample = np.transpose(tiff.imread(path), (1, 2, 0))
+            sample_size = list(np.shape(sample))
+            if sample_size[-1] % (self.args.n_phases * self.args.n_angles) == 0:
+                sample_size[-1] = sample_size[-1] // (self.args.n_phases * self.args.n_angles)
+                sample_size.append(self.args.n_phases * self.args.n_angles)
+            else:
+                sample_size.append(1)
+            if show:
+                plt.figure()
+                plt.imshow(sample[:, :, 0])
+                plt.show()
+        elif any(ext in path for ext in table_formats):
+            sample = pd.read_csv(path, sep=sep)
+            print(sample)
+            sample_size = [1]
+        return sample_size
 
     def image2image_batch_load(self,
                                batch_size: int,
@@ -145,13 +121,13 @@ class Data(ABC):
             loaded batch of ground truth
         -------
         """
-        batch_images_path = os.listdir(self.data_dirs['x' + mode])
-        gt_images_path = os.listdir(self.data_dirs['y' + mode])
+        batch_images_path = os.listdir(self.data_info['x' + mode])
+        gt_images_path = os.listdir(self.data_info['y' + mode])
 
         batch_images_path.sort()
         gt_images_path.sort()
-        x_path = self.data_dirs['x' + mode]
-        y_path = self.data_dirs['y' + mode]
+        x_path = self.data_info['x' + mode]
+        y_path = self.data_info['y' + mode]
 
         iteration = iteration * batch_size
         batch_images_path = batch_images_path[iteration:batch_size + iteration]
@@ -192,30 +168,3 @@ class Data(ABC):
                                     order='F').transpose((0, 2, 3, 1, 4))
 
         return image_batch, gt_batch
-
-    @abstractmethod
-    def load_psf(self):
-        """
-            Load PSF
-        """
-
-    def init_psf(self):
-        """
-            Read OTF and PSF
-        """
-
-        raw_psf = self.load_psf()
-        # 128*128*11 otf and psf numpy array
-        psf, _ = cal_psf_3d(raw_psf,
-                            self.output_dim[:-1])
-
-        print('PSF size before:', np.shape(psf))
-        # return psf
-        # sigma_y, sigma_x, sigma_z = psf_estimator_3d(psf)  # Find the most effective region of OTF
-        ksize = self.output_dim[0] // 2  # int(sigma_y * 4)
-        halfy = np.shape(psf)[0] // 2
-        print(ksize, halfy)
-        psf = psf[halfy - ksize:halfy + ksize, halfy - ksize:halfy + ksize, :]
-        print('PSF size after:', np.shape(psf))
-        return np.reshape(psf,
-                          (ksize * 2, 2 * ksize, np.shape(psf)[2], 1)).astype(np.float32)

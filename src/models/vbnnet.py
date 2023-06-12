@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-    GAN abstract
+    VBN-NET
     author: SPDKH
     date: 2023
 """
@@ -13,15 +13,18 @@ import numpy as np
 from matplotlib import pyplot as plt
 import tensorflow as tf
 from tensorflow.keras.layers import Input
+from tensorflow.keras.models import Model
 
 from src.models.dnn import DNN
 from src.utils.img_helper import img_comp
-from src.utils import const
+from src.utils import const, data_helper
+from src.utils.architectures.regression import simple_dense
 
 
-class GAN(DNN):
+class VBNNET(DNN):
     """
-        Abstract class for any GAN architecture
+        Visual Based Navigation
+        DLL implementation
     """
 
     def __init__(self, args):
@@ -30,15 +33,17 @@ class GAN(DNN):
                 args: argparse object
         """
         DNN.__init__(self, args)
+        self.model_output = simple_dense(self.model_input, 3)
+        print(self.model_output)
+        print(self.model_input)
+        self.model = Model(self.model_input,
+                           self.model_output)
 
-        self.d_model = None
-        self.d_input = Input(self.data.output_dim)
-        self.d_output = None
-
-        self.d_loss_record = []
-
-        self.d_loss_object = None
-        self.d_lr_controller = None
+    def build_model(self):
+        self.model.compile(loss='mean_absolute_error',
+                           optimizer='adam',
+                           metrics=['mean_absolute_error'])
+        print(self.model.summary())
 
     def train_epoch(self, batch_log: bool = 0):
         """
@@ -48,31 +53,67 @@ class GAN(DNN):
             todo: update the loop
         """
         start_time = datetime.datetime.now()
-        self.lr_controller.on_train_begin()
         batch_id = -1
         iteration = 0
         while batch_id != 0:
             iteration += 1
             batch_id = self.batch_iterator('train')
-            print(batch_id)
-            loss_discriminator, loss_generator = \
-                self.train_gan()
+            print(iteration, batch_id)
+
+            batch_imgs = \
+                data_helper.img_batch_load(self.data.data_info['xtrain'],
+                                           self.args.batch_size,
+                                           batch_id)
+            batch_output \
+                = np.squeeze(self.data.data_info['ytrain'][batch_id:batch_id
+                                                         + self.args.batch_size])
+
+            print(np.shape(self.model_input), np.shape(self.model_output))
+            print(np.shape(batch_imgs), np.shape(batch_output))
+            batch_loss = self.model.train_on_batch(batch_imgs, batch_output)
+
             elapsed_time = datetime.datetime.now() - start_time
 
             if batch_log:
-                tf.print("%d batch iteration: time: %s, g_loss = %s, d_loss= " % (
-                    iteration + 1,
+                tf.print("%d batch iteration: time: %s, batch_loss = %s" % (
+                    batch_id + 1,
                     elapsed_time,
-                    loss_generator),
-                         loss_discriminator, output_stream=sys.stdout)
+                    batch_loss), output_stream=sys.stdout)
 
             if (iteration) % self.args.sample_interval == 0:
                 self.validate(iteration, sample=1)
 
-            self.loss_record.append(loss_generator)
-            self.d_loss_record.append(loss_discriminator)
+            self.loss_record.append(batch_loss)
 
-        return np.mean(self.loss_record), np.mean(self.d_loss_record)
+        return np.mean(self.loss_record)
+
+    def train(self):
+        """
+                iterate over epochs
+            """
+        start_time = datetime.datetime.now()
+
+        print('Training...')
+
+        for iteration in range(self.args.iteration):
+            elapsed_time = datetime.datetime.now() - start_time
+
+            model_loss = self.train_epoch(0)
+
+            tf.print("%d epoch: time: %s, loss = %s" % (
+                iteration + 1,
+                elapsed_time,
+                model_loss), output_stream=sys.stdout)
+
+            if iteration % self.args.validate_interval == 0:
+                self.validate(iteration, sample=0)
+                self.write_log(self.writer,
+                               'simple_dense',
+                               np.mean(self.loss_record),
+                               iteration)
+                self.loss_record = []
+
+            self.loss_record.append(model_loss)
 
     def validate(self, iteration, sample=0):
         """
@@ -128,14 +169,10 @@ class GAN(DNN):
         if sample == 0:
             self.model.save_weights(const.WEIGHTS_DIR
                                     / 'weights_gen_latest.h5')
-            self.d_model.save_weights(const.WEIGHTS_DIR
-                                      / 'weights_disc_latest.h5')
 
             if min(validate_nrmse) > np.mean(metrics['nrmse']):
                 self.model.save_weights(const.WEIGHTS_DIR
                                         / 'weights_gen_best.h5')
-                self.d_model.save_weights(const.WEIGHTS_DIR
-                                          / 'weights_disc_best.h5')
 
             validate_nrmse.append(np.mean(metrics['nrmse']))
             cur_lr = self.lr_controller.on_iteration_end(iteration, np.mean(metrics['nrmse']))
@@ -177,65 +214,3 @@ class GAN(DNN):
 
             plt.savefig(const.SAMPLE_DIR + '%d.png' % iteration)  # Save sample results
             plt.close("all")  # Close figures to avoid memory leak
-
-    @abstractmethod
-    def train_gan(self):
-        """
-            train generator and discriminator altogether
-            for one iteration
-        """
-
-    @abstractmethod
-    def discriminator(self):
-        """
-            call discriminator function
-        """
-
-    @abstractmethod
-    def generator(self):
-        """
-            call generator function
-        """
-
-    def discriminator_loss(self, disc_real_output, disc_generated_output):
-        """
-            calculate discriminator loss
-
-            params:
-                disc_real_output: tf tensor
-                    result of applying disc to the gt
-                disc_generated_output: tf tensor
-                    result of applying disc to the gt
-
-            returns:
-                discriminator loss value
-        """
-        real_loss = self.loss_object(tf.ones_like(disc_real_output),
-                                     disc_real_output)
-        generated_loss = self.loss_object(tf.zeros_like(disc_generated_output),
-                                          disc_generated_output)
-        total_disc_loss = real_loss + generated_loss
-
-        return total_disc_loss
-
-    def generator_loss(self, generated_output):
-        """
-            calculate generator loss
-
-            params:
-                fake_output: tf tensor
-                    generated images
-
-            returns:
-                discriminator loss value
-        """
-
-        def gen_loss(y_true, y_pred):
-            """
-                    generator loss calculator for builtin tf loss callback
-            """
-            gan_loss = self.loss_object(tf.ones_like(generated_output),
-                                        generated_output)
-            return gan_loss
-
-        return gen_loss

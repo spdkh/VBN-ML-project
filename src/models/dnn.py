@@ -38,6 +38,8 @@ class DNN(ABC):
         self.data = getattr(dataset_module,
                             args.dataset)(self.args)
 
+        print(self.data.output_dim)
+        print(self.data.input_dim)
         self.scale_factor = int(self.data.output_dim[0]
                                 / self.data.input_dim[0])
 
@@ -60,7 +62,7 @@ class DNN(ABC):
             takes care of loading batches iteratively
         """
         # how many total data in that mode exists
-        data_size = len(os.listdir(self.data.data_dirs['x' + mode]))
+        data_size = len(self.data.data_info['x' + mode])
         if data_size // self.args.batch_size - 1 <= self.batch_id[mode]:
             self.batch_id[mode] = 0
         else:
@@ -105,7 +107,7 @@ class DNN(ABC):
             self.d_loss_record.append(loss_discriminator)
 
     @abstractmethod
-    def train_epoch(self):
+    def train_epoch(self, batch_log: bool):
         """
             Training process per epoch
             loop over all data samples / number of batches
@@ -121,12 +123,6 @@ class DNN(ABC):
             learning rate controller,
             compile model,
             load initial weights if available
-        """
-
-    @abstractmethod
-    def train_epoch(self, batch_log: bool = 0):
-        """
-            iterate over batches
         """
 
     @abstractmethod
