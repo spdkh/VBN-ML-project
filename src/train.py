@@ -37,6 +37,7 @@ def main():
     else:
         module_name = '.'.join(['src.models',
                                 args.dnn_type])
+    print(module_name)
     dnn_module = __import__(module_name,
                             fromlist=[args.dnn_type.upper()])
     dnn = getattr(dnn_module,
