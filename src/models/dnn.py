@@ -31,7 +31,7 @@ class DNN(ABC):
         print(self.args)
         print('Init DNN Arch:', self.args.dnn_type)
 
-        module_name = '.'.join(['data',
+        module_name = '.'.join(['src.data',
                                 args.dataset.lower()])
         dataset_module = __import__(module_name,
                                     fromlist=[args.dataset])

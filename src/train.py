@@ -31,11 +31,11 @@ def main():
 
     # open session
     if args.task is not None:
-        module_name = '.'.join(['models',
+        module_name = '.'.join(['src.models',
                                 args.task,
                                 args.dnn_type])
     else:
-        module_name = '.'.join(['models',
+        module_name = '.'.join(['src.models',
                                 args.dnn_type])
     dnn_module = __import__(module_name,
                             fromlist=[args.dnn_type.upper()])
