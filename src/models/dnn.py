@@ -38,8 +38,6 @@ class DNN(ABC):
         self.data = getattr(dataset_module,
                             args.dataset)(self.args)
 
-        print(self.data.output_dim)
-        print(self.data.input_dim)
         self.scale_factor = int(self.data.output_dim[0]
                                 / self.data.input_dim[0])
 
@@ -54,6 +52,7 @@ class DNN(ABC):
         self.loss_object = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
         self.writer = tf.summary.create_file_writer(str(const.LOG_DIR))
+        print(const.LOG_DIR)
 
         super().__init__()
 
@@ -67,6 +66,7 @@ class DNN(ABC):
             self.batch_id[mode] = 0
         else:
             self.batch_id[mode] += 1
+
         return self.batch_id[mode]
 
     def train(self):

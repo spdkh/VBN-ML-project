@@ -2,6 +2,7 @@
     Author: SPDKH
     Date: Spring 1400
 """
+import pytz
 import datetime
 from pathlib import Path
 
@@ -16,12 +17,12 @@ THIS_DIR = Path(__file__).__str__()
 SRC_DIR = Path(THIS_DIR).parents[1]
 PROJ_DIR = Path(THIS_DIR).parents[2]
 CONFIG_DIR = SRC_DIR / 'config'
-OUT_DIR = Path(args.result_dir)
+OUT_DIR = PROJ_DIR / Path(args.result_dir)
 DATA_DIR = Path(args.data_dir)
 
 CHK_FOLDER = '_'.join([args.dataset,
                        args.dnn_type,
-                       datetime.datetime.now().strftime("%d-%m-%Y_time%H%M")])
+                       datetime.datetime.now(pytz.timezone('US/Central')).strftime("%d-%m-%Y_time%H%M")])
 
 WEIGHTS_DIR = OUT_DIR / CHK_FOLDER
 check_folder(WEIGHTS_DIR)

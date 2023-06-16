@@ -2,7 +2,7 @@ from tensorflow.keras.layers import Dense, Flatten
 
 
 def simple_dense(net_input, n_classes,
-                 n_neurons=(128, 256, 256, 256)):
+                 n_neurons=(8, 4, 4, 4)):
     """
         simple dense regression arch
     """

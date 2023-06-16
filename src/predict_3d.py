@@ -59,7 +59,6 @@ def main():
     print('Processing ' + test_images_path + '...')
     im_count = 0
     for curp in img_path:
-        print(curp)
         img = tiff.imread(curp)
         img = np.array(img).reshape((n_channel, input_z, input_y, input_x),
                                     order='F').transpose((2, 3, 1, 0))

@@ -79,7 +79,7 @@ def parse_args():
     parser.add_argument("--train_discriminator_times", type=int, default=1)
     parser.add_argument("--d_opt", type=str, default="adam")
 
-    default_iterations = 5000
+    default_iterations = 50
     parser.add_argument('--batch_size', type=int, default=8,
                         choices=range(2, 16),
                         help='The size of batch')
@@ -87,8 +87,8 @@ def parse_args():
                         default=default_iterations, help='The number of iterations to run')
     parser.add_argument("--sample_interval",
                         type=int, default=int(1 + 10 * (np.log10(1 + default_iterations // 50))))
-    parser.add_argument("--validate_interval", type=int, default=5)
-    parser.add_argument("--validate_num", type=int, default=5)
+    parser.add_argument("--validate_interval", type=int, default=1)
+    parser.add_argument("--validate_num", type=int, default=1)
     parser.add_argument("--norm", type=str, default='min_max',
                         help='Image normalization Method.',
                         choices=['max',

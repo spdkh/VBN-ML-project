@@ -50,24 +50,21 @@ class GAN(DNN):
         start_time = datetime.datetime.now()
         self.lr_controller.on_train_begin()
         batch_id = -1
-        iteration = 0
         while batch_id != 0:
-            iteration += 1
             batch_id = self.batch_iterator('train')
-            print(batch_id)
             loss_discriminator, loss_generator = \
                 self.train_gan()
             elapsed_time = datetime.datetime.now() - start_time
 
             if batch_log:
                 tf.print("%d batch iteration: time: %s, g_loss = %s, d_loss= " % (
-                    iteration + 1,
+                    batch_id + 1,
                     elapsed_time,
                     loss_generator),
                          loss_discriminator, output_stream=sys.stdout)
 
-            if (iteration) % self.args.sample_interval == 0:
-                self.validate(iteration, sample=1)
+            if (batch_id) % self.args.sample_interval == 0:
+                self.validate(batch_id, sample=1)
 
             self.loss_record.append(loss_generator)
             self.d_loss_record.append(loss_discriminator)
