@@ -1,5 +1,14 @@
 # VBN ML Project
 
+To change the deep architecture in this project,
+define your architecture in src/utils/architectures.
+The function should take net_input as a tensorflow Input object.
+Then return net_output as a tensorflow object. 
+In src/models/vbnnet.py import your function and change the architecture used in
+line 34 as self.outupt to your function given the tensorflow input 
+and other parameters if needed.
+I will put instructions on designing a GAN later.
+
 ## Initiate and activate the environment: 
 
     conda create -n "vbn_project" python=3.8.5
