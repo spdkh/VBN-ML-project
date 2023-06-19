@@ -23,7 +23,8 @@ def main():
         sys.exit()
     tf.random.set_seed(args.seed)
 
-    print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+    print("\nNum GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+    print()
 
     config = ConfigProto()
     config.gpu_options.allow_growth = True

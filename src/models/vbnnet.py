@@ -16,7 +16,7 @@ from src.models.dnn import DNN
 from src.utils.img_helper import img_comp
 from src.utils import const, data_helper, norm_helper
 from src.utils.architectures.regression import simple_dense
-from src.utils.architectures.basic_arch import simple_cnn
+from src.utils.architectures.transfer_learning import vgg16
 
 
 class VBNNET(DNN):
@@ -31,7 +31,9 @@ class VBNNET(DNN):
                 args: argparse object
         """
         DNN.__init__(self, args)
-        self.model_output = simple_cnn(self.model_input, 3)
+        self.model_output = vgg16(self.model_input, 3)
+        print('model input:', self.model_input)
+        print('model output:', self.model_output)
         self.model = Model(self.model_input,
                            self.model_output)
 

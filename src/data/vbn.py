@@ -29,13 +29,7 @@ class VBN(Data):
         self.data_types = {'x': 'JPG2', 'y': 'MetaData2'}
 
         self.config()
-        #
-        # coords_start = (35.110000, -89.800000)
-        # coords_end =   (35.130000, -89.820000)
-        #
-        # dist = geopy.distance.geodesic(coords_start, coords_end).km
-        # print(dist)
-        # print(dist/np.sqrt(2))
+
 
     def config(self):
         """
@@ -43,30 +37,58 @@ class VBN(Data):
         """
         img_paths = data_helper.find_files(const.DATA_DIR / 'JPG2', 'jpg')
         img_paths.sort()
-        print('number of images in the path:', len(img_paths))
+        print('\nNumber of images in the path:', len(img_paths))
 
         text_paths = data_helper.find_files(const.DATA_DIR, 'txt')
         text_paths.sort()
-        print('number of texts in the path:', len(text_paths))
+        print('Number of texts in the path:', len(text_paths))
 
         meta_df = pd.read_csv(text_paths[0], sep=':', index_col=0,
                               names=[0])
 
-        print('First metadata sample:')
+        print('\nFirst metadata sample:')
         print(meta_df)
 
-        for i, meta_data in enumerate(text_paths[1:-1]):
+        meta_dfs = []
+        for i, meta_data in enumerate(text_paths[:-1]):
             df = pd.read_csv(meta_data, sep=':', index_col=0, names=[i + 1])
-            meta_df = pd.concat((meta_df.loc[:, :], df.iloc[:, 0]), axis=1)
+            meta_dfs.append(df.iloc[:, 0])
+
+        meta_df = pd.concat(meta_dfs, axis=1)
 
         print('All metadata:')
         print(meta_df)
+
 
         network_out = meta_df.loc['Platform_position_LatLongAlt', :]
         network_out = network_out.str.split(" ", expand=True).iloc[:, 1:-1].astype('float64')
         network_out.columns = ['Lat', 'Long', 'Alt']
         print('Network Outputs:')
         print(network_out)
+
+        self.org_out_min = np.min(network_out, axis=0)
+        self.org_out_max = np.max(network_out, axis=0)
+
+        print('Min Lat, Long, Alt:', self.org_out_min)
+        print('Max Lat, Long, Alt:', self.org_out_max)
+
+        coords_ul = (np.min(network_out.loc[:, 'Lat']), np.min(network_out.loc[:, 'Long']))
+        coords_ur = (np.max(network_out.loc[:, 'Lat']), np.min(network_out.loc[:, 'Long']))
+        coords_dl = (np.min(network_out.loc[:, 'Lat']), np.max(network_out.loc[:, 'Long']))
+        coords_dr = (np.max(network_out.loc[:, 'Lat']), np.max(network_out.loc[:, 'Long']))
+
+        land_width = geopy.distance.geodesic(coords_ul, coords_ur).km
+        land_height = geopy.distance.geodesic(coords_ul, coords_dl).km
+        print('Area Diagonal Distance:', geopy.distance.geodesic(coords_ul, coords_dr).km, ' Km')
+        print('Width =', land_width, 'Km')
+        print('Height =', land_height, 'Km')
+
+        land_area = land_width * land_height
+        print('Land area = ', land_area, 'Km^2')
+
+        img_area = land_area / len(network_out.index)
+
+        print('Area covered by each image =', img_area, 'Km^2')
 
         y_normalized = norm_helper.min_max_norm(network_out)
         print('Normalized outputs (y_normalized):')
@@ -85,7 +107,7 @@ class VBN(Data):
                                random_state=self.args.seed)
 
         self.input_dim = np.shape(data_helper.imread(self.data_info['xtrain'][0]))
-        self.output_dim = np.shape(class_ids)
+        self.output_dim = 3 #np.shape(class_ids)
         print('Sample image size:', self.input_dim)
         # print('X_train size:', np.shape(self.x_train))
         # print('X_test size:', np.shape(self.x_test))

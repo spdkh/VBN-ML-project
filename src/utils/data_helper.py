@@ -85,11 +85,12 @@ def img_batch_load(imgs_paths,
     return image_batch
 
 
+small = (615, 515)
 one_k = (1024, 768)
 two_k = (2048, 1536)
 
 
-def imread(img_path, shape=one_k):
+def imread(img_path, shape=small):
     im = Image.open(img_path)
     im.draft('RGB', shape)
     return np.asarray(im)

@@ -28,8 +28,8 @@ class DNN(ABC):
         self.batch_id = {'train': 0, 'val': 0, 'test': 0}
 
         self.args = args
-        print(self.args)
-        print('Init DNN Arch:', self.args.dnn_type)
+        print('\nInitiated Parameters:\n', self.args)
+        print('\nInit DNN Arch:', self.args.dnn_type)
 
         module_name = '.'.join(['src.data',
                                 args.dataset.lower()])
@@ -37,9 +37,6 @@ class DNN(ABC):
                                     fromlist=[args.dataset])
         self.data = getattr(dataset_module,
                             args.dataset)(self.args)
-
-        self.scale_factor = int(self.data.output_dim[0]
-                                / self.data.input_dim[0])
 
         self.model_input = Input(self.data.input_dim)
         self.model_output = None
