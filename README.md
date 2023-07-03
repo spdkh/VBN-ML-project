@@ -14,7 +14,7 @@ I will put instructions on designing a GAN later.
     conda create -n "vbn_project" python=3.8.5
     conda activate vbn_project
     cd /path/to/VBN-ML-project
-    pip install requirements.txt # I just like pip for this more :D
+    pip install -r requirements.txt # I just like pip for this more :D
 
 ## Train with 100 epochs:
 
