@@ -14,3 +14,4 @@ tensorboard==2.10.1
 tensorboard-data-server==0.6.0
 tensorboard-plugin-wit==1.8.1
 visualkeras==0.0.2
+geopy==2.3.0
