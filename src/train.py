@@ -19,6 +19,7 @@ def main():
 
     # parse arguments
     args = parse_args()
+
     if args is None:
         sys.exit()
     tf.random.set_seed(args.seed)

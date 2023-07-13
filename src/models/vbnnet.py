@@ -7,9 +7,11 @@
 import sys
 import datetime
 
+from tqdm import tqdm
 import numpy as np
 from matplotlib import pyplot as plt
 import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Model
 
 from src.models.dnn import DNN
@@ -17,6 +19,7 @@ from src.utils.img_helper import img_comp
 from src.utils import const, data_helper, norm_helper
 from src.utils.architectures.regression import simple_dense
 from src.utils.architectures.transfer_learning import vgg16
+from src.utils.config import dnn_pars_args, dir_pars_args
 
 
 class VBNNET(DNN):
@@ -54,27 +57,60 @@ class VBNNET(DNN):
         self.batch_id['train'] = 1
         batch_id = 1
         loss_record = []
-        while batch_id != 0:
-            batch_imgs = \
-                data_helper.img_batch_load(self.data.data_info['xtrain'],
-                                           self.args.batch_size,
-                                           batch_id)
-            batch_output \
-                = self.data.data_info['ytrain'][2*batch_id:
-                                                2*batch_id + self.args.batch_size]
+        with tqdm(total=100) as pbar:
+            while batch_id != 0:
+                batch_imgs = \
+                    data_helper.img_batch_load(self.data.data_info['xtrain'],
+                                               self.args.batch_size,
+                                               batch_id)
+                batch_outputs \
+                    = self.data.data_info['ytrain'][2 * batch_id:
+                                                    2 * batch_id + self.args.batch_size]
 
-            batch_loss = self.model.train_on_batch(batch_imgs, batch_output)
+                train_datagen = ImageDataGenerator(
+                    rescale=1. / 255,
+                    rotation_range=360,
+                    width_shift_range=0.6,
+                    height_shift_range=0.6,
+                    horizontal_flip=True,
+                    fill_mode='nearest')
 
-            elapsed_time = datetime.datetime.now() - start_time
+                batch_loss = self.model.train_on_batch(batch_imgs, batch_outputs)
+                loss_record.append(batch_loss)
 
-            if batch_log:
-                print("%d batch iteration: time: %s, batch_loss = %s" % (
+                # print('Train with augmented data:')
+                for i, (img, batch_output) in enumerate(train_datagen.flow(
+                        batch_imgs,
+                        y=batch_outputs,
+                        batch_size=self.args.batch_size,
+                        shuffle=True,
+                        seed=self.args.seed,
+                        ignore_class_split=True,
+                )):
+                    # output = self.model.predict(img)
+                    # print(i, img.shape, batch_output.shape)
+                    # output = norm_helper.min_max_norm(output)
+                    batch_loss = self.model.train_on_batch(img, batch_output)
+                    loss_record.append(batch_loss)
+
+                    if i > 10:
+                        break
+                elapsed_time = datetime.datetime.now() - start_time
+
+                if batch_log:
+                    print("%d batch iteration: time: %s, batch_loss = %s" % (
                         batch_id,
                         elapsed_time,
                         batch_loss))
 
-            loss_record.append(batch_loss)
-            batch_id = self.batch_iterator('train')
+                    self.write_log(
+                        'full train loss',
+                        loss_record,
+                        iteration*self.n_batches['train'] + batch_id)
+                    self.loss_record = []
+
+                batch_id = self.batch_iterator('train')
+                pbar.update()
 
         return np.mean(loss_record)
 
@@ -82,12 +118,39 @@ class VBNNET(DNN):
         """
             iterate over epochs
         """
+        print('Training...')
+
+        for key, value in vars(dnn_pars_args().parse_args()).items():
+            if value is not None:
+                self.write_log(names='DNN Params',
+                               logs="{:<20}{:<10}".format(key, value),
+                               mode='')
+
+        self.write_log(names='Directories',
+                       logs=vars(dir_pars_args().parse_args()),
+                       mode='')
         start_time = datetime.datetime.now()
 
-        print('Training...')
         self.loss_record = []
         for iteration in range(self.args.iteration):
             elapsed_time = datetime.datetime.now() - start_time
+
+            # tf.keras.utils.image_dataset_from_directory(
+            #     self.data.data_info['xtrain'],
+            #     labels=self.data.data_info['ytrain'],
+            #     label_mode='categorical',
+            #     color_mode='rgba',
+            #     batch_size=self.args.batch_size,
+            #     image_size=self.data.input_dim,
+            #     shuffle=True,
+            #     seed=self.args.seed,
+            #     validation_split=None,
+            #     subset=None,
+            #     interpolation='bilinear',
+            #     follow_links=False,
+            #     crop_to_aspect_ratio=False,
+            #     **kwargs
+            # )
 
             model_loss = self.train_epoch()
             self.loss_record.append(model_loss)
@@ -100,12 +163,12 @@ class VBNNET(DNN):
                 self.validate(sample=1, sample_id=iteration)
 
             if iteration % self.args.validate_interval == 0:
-                self.validate(sample=0)
+                self.validate(sample=0, sample_id=iteration)
 
-                self.write_log(self.writer,
-                               'simple_dense',
-                               np.mean(self.loss_record),
-                               iteration)
+                self.write_log(
+                    'model loss',
+                    np.mean(self.loss_record),
+                    iteration)
                 self.loss_record = []
 
     def validate(self, sample=0, sample_id=None):
@@ -115,6 +178,7 @@ class VBNNET(DNN):
                 :return:
                 todo: review
         """
+
         batch_id = self.batch_iterator('val')
         err = [np.Inf]
 
@@ -125,8 +189,8 @@ class VBNNET(DNN):
                                        self.args.batch_size,
                                        batch_id)
         batch_output \
-            = self.data.data_info['yval'][batch_id*2:
-                                          2*batch_id + self.args.batch_size]
+            = self.data.data_info['yval'][batch_id * 2:
+                                          batch_id * 2 + self.args.batch_size]
 
         outputs = self.model.predict(imgs)
         # print(batch_id, 'Validating...')
@@ -147,7 +211,7 @@ class VBNNET(DNN):
 
             err.append(np.mean(val_names['val_MAE']))
 
-            self.write_log(self.writer, 'val_MAE', np.mean(val_names['val_MAE']), batch_id)
+            self.write_log('val_MAE', np.mean(val_names['val_MAE']), batch_id + sample_id * self.n_batches['val'])
 
         else:
             plt.figure()

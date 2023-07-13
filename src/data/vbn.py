@@ -59,7 +59,6 @@ class VBN(Data):
         print('All metadata:')
         print(meta_df)
 
-
         network_out = meta_df.loc['Platform_position_LatLongAlt', :]
         network_out = network_out.str.split(" ", expand=True).iloc[:, 1:-1].astype('float64')
         network_out.columns = ['Lat', 'Long', 'Alt']
@@ -109,7 +108,7 @@ class VBN(Data):
         self.input_dim = np.shape(data_helper.imread(self.data_info['xtrain'][0]))
         self.output_dim = 3 #np.shape(class_ids)
         print('Sample image size:', self.input_dim)
-        # print('X_train size:', np.shape(self.x_train))
-        # print('X_test size:', np.shape(self.x_test))
-        # print('Y_train size:', np.shape(self.y_train))
-        # print('Y_test size:', np.shape(self.y_test))
+        print('X_train size:', np.shape(self.data_info['xtrain']))
+        print('X_test size:', np.shape(self.data_info['xtest']))
+        print('Y_train size:', np.shape(self.data_info['ytrain']))
+        print('Y_test size:', np.shape(self.data_info['ytest']))
