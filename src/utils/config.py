@@ -43,7 +43,10 @@ def parse_args():
                                      conflict_handler='resolve'
                                      )
     parser.add_argument("--sample_interval",
-                        type=int, default=int(1 + 10 * (np.log10(1 + iterations // 50))))
+                        type=int,
+                        default=1
+                        # default=int(1 + 10 * (np.log10(1 + iterations // 50)))
+                        )
     parser.add_argument("--validate_interval", type=int, default=1)
     parser.add_argument("--validate_num", type=int, default=1)
 
@@ -53,7 +56,7 @@ def parse_args():
 def dir_pars_args():
     dir_parser = argparse.ArgumentParser(add_help=False)
     dir_parser.add_argument("--data_dir", type=str,
-                            default="H:/My Drive/VisnavPNGFiles/jpg Simulated Files/Raster",
+                            default="/home/sdjkhosh/VisnavPNGFiles/jpg Simulated Files/Raster",
                             help='The directory of the data')
     dir_parser.add_argument('--result_dir', type=str, default='results',
                             help='Directory name to save the generated images')
@@ -99,7 +102,11 @@ def dnn_pars_args(iterations=iterations):
                         choices=range(2, 16),
                         help='The size of batch')
     dnn_parser.add_argument('--iteration', type=int,
-                        default=iterations, help='The number of iterations to run')
+                        default=iterations, help='The number of epochs to run')
+    dnn_parser.add_argument('--batch_iter', type=int,
+                            default=50, help='The number of iterations to load from the batch')
+    dnn_parser.add_argument('--n_augment', type=int,
+                            default=10, help='The number of augmented images for each batch')
     dnn_parser.add_argument("--seed", type=int, default=12345)
 
     return dnn_parser

@@ -71,23 +71,28 @@ class VBN(Data):
         print('Min Lat, Long, Alt:', self.org_out_min)
         print('Max Lat, Long, Alt:', self.org_out_max)
 
-        coords_ul = (np.min(network_out.loc[:, 'Lat']), np.min(network_out.loc[:, 'Long']))
-        coords_ur = (np.max(network_out.loc[:, 'Lat']), np.min(network_out.loc[:, 'Long']))
-        coords_dl = (np.min(network_out.loc[:, 'Lat']), np.max(network_out.loc[:, 'Long']))
-        coords_dr = (np.max(network_out.loc[:, 'Lat']), np.max(network_out.loc[:, 'Long']))
+        coords_ul = (self.org_out_min['Lat'], self.org_out_min['Long'])
+        coords_ur = (self.org_out_max['Lat'], self.org_out_min['Long'])
+        coords_dl = (self.org_out_min['Lat'], self.org_out_max['Long'])
+        coords_dr = (self.org_out_max['Lat'], self.org_out_max['Long'])
 
         land_width = geopy.distance.geodesic(coords_ul, coords_ur).km
         land_height = geopy.distance.geodesic(coords_ul, coords_dl).km
-        print('Area Diagonal Distance:', geopy.distance.geodesic(coords_ul, coords_dr).km, ' Km')
+        img_diagonal = geopy.distance.geodesic(coords_ul, coords_dr).km
+        print('Area Diagonal Distance:', img_diagonal, ' Km')
         print('Width =', land_width, 'Km')
         print('Height =', land_height, 'Km')
 
+
+        # only applicable if the images form a recangle overall
         land_area = land_width * land_height
         print('Land area = ', land_area, 'Km^2')
 
+        # only applicable if the images forming a rectangle do not overlap
         img_area = land_area / len(network_out.index)
-
         print('Area covered by each image =', img_area, 'Km^2')
+
+
 
         y_normalized = norm_helper.min_max_norm(network_out)
         print('Normalized outputs (y_normalized):')
