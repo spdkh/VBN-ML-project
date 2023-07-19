@@ -74,22 +74,21 @@ def img_batch_load(imgs_paths,
     iteration = iteration * batch_size
     imgs_paths = imgs_paths[iteration:batch_size + iteration]
 
-    image_batch = []
-    for i, _ in enumerate(imgs_paths):
+    image_batch = dict()
+    for i, path in enumerate(imgs_paths):
         cur_img = imread(imgs_paths[i])
         cur_img = norm_helper.min_max_norm(np.array(cur_img))
-        image_batch.append(cur_img)
-
-    image_batch = np.array(image_batch)
-
+        image_batch[path] = np.array(cur_img)
+    print(len(image_batch))
     return image_batch
 
 
+small = (615, 515)
 one_k = (1024, 768)
 two_k = (2048, 1536)
 
 
-def imread(img_path, shape=one_k):
+def imread(img_path, shape=small):
     im = Image.open(img_path)
     im.draft('RGB', shape)
     return np.asarray(im)
