@@ -114,6 +114,8 @@ class VBN(Data):
         self.output_dim = 3 #np.shape(class_ids)
         print('Sample image size:', self.input_dim)
         print('X_train size:', np.shape(self.data_info['xtrain']))
+        print('X_val size:', np.shape(self.data_info['xval']))
         print('X_test size:', np.shape(self.data_info['xtest']))
         print('Y_train size:', np.shape(self.data_info['ytrain']))
+        print('Y_val size:', np.shape(self.data_info['yval']))
         print('Y_test size:', np.shape(self.data_info['ytest']))

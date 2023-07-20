@@ -108,6 +108,13 @@ class DNN(ABC):
             self.d_loss_record.append(loss_discriminator)
 
     @abstractmethod
+    def predict(self):
+        """
+
+        :return:
+        """
+
+    @abstractmethod
     def train_epoch(self, batch_log: bool):
         """
             Training process per epoch
@@ -127,7 +134,7 @@ class DNN(ABC):
         """
 
     @abstractmethod
-    def validate(self, iteration, sample=0):
+    def validate(self, sample, sample_id, mode):
         """
             validate and write logs
         """

@@ -62,8 +62,9 @@ def dir_pars_args():
                             help='Directory name to save the generated images')
     dir_parser.add_argument("--model_weights", type=str,
                             default=pathlib.Path(
-                                """D:/OneDrive - The University of Memphis/Parisa_Daj/Codes/
-            caGAN_git/trained_models/2d/SIM_cropped_0.05/weights_disc_best.h5"""))
+                                "results/VBN_vbnnet_14-07-2023_time1230/weights_gen_best.h5"))
+    dir_parser.add_argument('--extra_test', type=str, default='/home/sdjkhosh/VisnavPNGFiles/DJI_images',
+                        help='Address to the folder of images outside the test folder to be tested')
     return dir_parser
 
 
@@ -99,14 +100,14 @@ def dnn_pars_args(iterations=iterations):
     dnn_parser.add_argument("--opt", type=str, default="adam")
 
     dnn_parser.add_argument('--batch_size', type=int, default=8,
-                        choices=range(2, 16),
+                        choices=range(1, 16),
                         help='The size of batch')
     dnn_parser.add_argument('--iteration', type=int,
                         default=iterations, help='The number of epochs to run')
     dnn_parser.add_argument('--batch_iter', type=int,
-                            default=50, help='The number of iterations to load from the batch')
+                            default=25, help='The number of iterations to load from the batch')
     dnn_parser.add_argument('--n_augment', type=int,
-                            default=10, help='The number of augmented images for each batch')
+                            default=25, help='The number of augmented images for each batch')
     dnn_parser.add_argument("--seed", type=int, default=12345)
 
     return dnn_parser

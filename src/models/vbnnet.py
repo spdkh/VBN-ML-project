@@ -4,6 +4,7 @@
     author: SPDKH
     date: 2023
 """
+import os
 import sys
 import datetime
 
@@ -41,6 +42,12 @@ class VBNNET(DNN):
         print('model output:', self.model_output)
         self.model = Model(self.model_input,
                            self.model_output)
+        if not os.path.exists(const.SAMPLE_DIR / 'val'):
+            os.mkdir(const.SAMPLE_DIR / 'val')
+
+        self.write_log(names='Directories',
+                       logs=vars(dir_pars_args().parse_args()),
+                       mode='')
 
     def build_model(self):
         self.model.compile(loss='mean_absolute_error',
@@ -144,9 +151,6 @@ class VBNNET(DNN):
                        logs=text,
                        mode='')
 
-        self.write_log(names='Directories',
-                       logs=vars(dir_pars_args().parse_args()),
-                       mode='')
         start_time = datetime.datetime.now()
 
         self.loss_record = []
@@ -189,41 +193,39 @@ class VBNNET(DNN):
                     iteration)
                 self.loss_record = []
 
-    def validate(self, sample=0, sample_id=None):
+    def validate(self, sample=0, sample_id=None, mode='val'):
         """
                 :param sample: sample id
                 :return:
                 todo: review
         """
 
-        batch_id = self.batch_iterator('val')
+        batch_id = self.batch_iterator(mode)
         err = [np.Inf]
 
-        val_names = {'val_MAE': [],
-                     'err_meter': []}
+        metrics = {'MAE': [],
+                   'err_meter': []}
 
         imgs = \
-            data_helper.img_batch_load(self.data.data_info['xval'],
+            data_helper.img_batch_load(self.data.data_info['x' + mode],
                                        self.args.batch_size,
                                        batch_id)
         batch_output \
-            = self.data.data_info['yval'][batch_id*self.args.batch_size:
-                                          (batch_id + 1)*self.args.batch_size]
+            = self.data.data_info['y' + mode][batch_id * self.args.batch_size:
+                                              (batch_id + 1) * self.args.batch_size]
 
         outputs = self.model.predict(np.asarray(list(imgs.values())))
-        # print(batch_id, 'Validating...')
+
         for i, ((img_name, img), output) in enumerate(zip(imgs.items(), outputs)):
             output = norm_helper.min_max_norm(output)
 
             img_gt = np.asarray(batch_output.iloc[i, :])
 
-            output_m = output * (self.data.org_out_max - self.data.org_out_min) \
-                       + self.data.org_out_min
-            img_gt_m = img_gt * (self.data.org_out_max - self.data.org_out_min) \
-                       + self.data.org_out_min
+            output_m = self.norm_geo2geo(output)
+            img_gt_m = self.norm_geo2geo(img_gt)
 
-            val_names['val_MAE'].append(np.mean(np.abs(output - img_gt)))
-            val_names['err_meter'].append(
+            metrics['MAE'].append(np.mean(np.abs(output - img_gt)))
+            metrics['err_meter'].append(
                 geopy.distance.geodesic((output_m['Lat'], output_m['Long']),
                                         (img_gt_m['Lat'], img_gt_m['Long'])).m)
 
@@ -231,37 +233,76 @@ class VBNNET(DNN):
             self.model.save_weights(const.WEIGHTS_DIR
                                     / 'weights_gen_latest.h5')
 
-            if min(err) > np.mean(val_names['val_MAE']):
+            if min(err) > np.mean(metrics['MAE']):
                 self.model.save_weights(const.WEIGHTS_DIR
                                         / 'weights_gen_best.h5')
 
-            err.append(np.mean(val_names['val_MAE']))
-
-            self.write_log('val_MAE', np.mean(val_names['val_MAE']),
-                           sample_id)
-            self.write_log('val Error in meters', np.mean(val_names['err_meter']),
-                           sample_id)
-
         else:
-            plt.figure()
-            # figures equal to the number of z patches in columns
+            err.append(np.mean(metrics['MAE']))
+
+            self.write_log(mode + '_MAE', np.mean(metrics['MAE']),
+                           sample_id)
+            self.write_log(mode + 'Error in meters', np.mean(metrics['err_meter']),
+                           sample_id)
+
             img_name = img_name.split('/')[-1].split('.')[0]
-
-            plt.title('original lat/long = ' \
-                      + str(list(img_gt_m)[:-1]) \
-                      + '\nPredicted lat/long =' \
-                      + str(list(output_m)[:-1]))
-
-            plt.imshow(img)
-            plt.show()
-
-            plt.gca().axes.yaxis.set_ticklabels([])
-            plt.gca().axes.xaxis.set_ticklabels([])
-            plt.gca().axes.yaxis.set_ticks([])
-            plt.gca().axes.xaxis.set_ticks([])
-            plt.xlabel('\nError =' 
-                      + str(round(val_names['err_meter'][-1], 3)) + ' m')
-
             result_name = str(sample_id) + '_batch' + str(batch_id) + '_img' + img_name + '.png'
-            plt.savefig(const.SAMPLE_DIR / result_name)  # Save sample results
-            plt.close("all")  # Close figures to avoid memory leak
+
+            self.visualize(img,
+                           str(list(output_m)[:-1]),
+                           const.SAMPLE_DIR / mode / result_name,
+                           str(list(img_gt_m)[:-1]),
+                           error=str(round(metrics['err_meter'][-1], 3)) + ' m'
+            )
+
+    def predict(self):
+        # self.model = tf.keras.models.load_model(self.args.model_weights)
+        self.args.batch_size = 1
+        self.args.load_weights = 1
+        output_dir = const.SAMPLE_DIR / 'test'
+        if not os.path.exists(output_dir):
+            os.mkdir(output_dir)
+
+        mode = 'test'
+
+        print('Processing ', len(self.data.data_info['x' + mode]), 'Test images...')
+
+        # for img_id, img_name in enumerate(self.data.data_info['x' + mode]):
+        #     self.validate(sample=1, sample_id=img_id, mode=mode)
+
+        if self.args.extra_test is not None:
+            imgs_dirs = data_helper.find_files(self.args.extra_test, 'JPG')
+            print('Processing ', len(imgs_dirs), 'extra test images...')
+            for img_dir in imgs_dirs:
+                img_name = img_dir.split('/')[-1]
+                img = data_helper.imread(img_dir)
+                predicted = self.model.predict(np.expand_dims(img, 0))[0]
+                self.visualize(img,
+                               str(list(self.norm_geo2geo(predicted))[:-1]),
+                               output_dir / img_name)
+
+    def visualize(self, img, predicted_info, output_dir, gt_info='NA', error='NA'):
+        plt.figure()
+        # figures equal to the number of z patches in columns
+
+        plt.title('original lat/long = ' \
+                  + gt_info \
+                  + '\nPredicted lat/long =' \
+                  + predicted_info)
+
+        plt.imshow(img)
+        plt.show()
+
+        plt.gca().axes.yaxis.set_ticklabels([])
+        plt.gca().axes.xaxis.set_ticklabels([])
+        plt.gca().axes.yaxis.set_ticks([])
+        plt.gca().axes.xaxis.set_ticks([])
+        plt.xlabel('\nError ='
+                   + error)
+
+        plt.savefig(output_dir)  # Save sample results
+        plt.close("all")  # Close figures to avoid memory leak
+
+    def norm_geo2geo(self, data):
+        return data * (self.data.org_out_max - self.data.org_out_min) \
+                + self.data.org_out_min

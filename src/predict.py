@@ -1,37 +1,44 @@
+import argparse
+import glob
+import numpy as np
+from PIL import Image
+import tensorflow as tf
+from tensorflow.keras import optimizers
+from tensorflow.keras.layers import Dense, Flatten, Input, add, multiply
+from tensorflow.compat.v1 import ConfigProto
+from tensorflow.compat.v1 import InteractiveSession
+
+import imageio
+import os
+from src.models import *
+from src.utils.norm_helper import prctile_norm
+
+from src.utils.config import parse_args
+
 """
     author: SPDKH
     date: Nov 2, 2023
 """
 
-import sys
-
-import tensorflow as tf
-from tensorflow.compat.v1 import ConfigProto
-from tensorflow.compat.v1 import InteractiveSession
-
-from src.utils.config import parse_args
-
 
 def main():
     """
-        Main Training Function
+        Main Predicting Function
     """
-
     # parse arguments
     args = parse_args()
 
     if args is None:
         sys.exit()
-    tf.random.set_seed(args.seed)
-
-    print("\nNum GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
-    print()
 
     config = ConfigProto()
     config.gpu_options.allow_growth = True
     _ = InteractiveSession(config=config)
 
-    # open session
+    # dnn = tf.keras.models.load_model(self.args.model_weights)
+
+
+    # # open session
     if args.task is not None:
         module_name = '.'.join(['src.models',
                                 args.task,
@@ -45,15 +52,9 @@ def main():
     dnn = getattr(dnn_module,
                   args.dnn_type.upper())(args)
 
-    # build graph
     dnn.build_model()
 
-    # show network architecture
-    # show_all_variables()
-    #
-    # launch the graph in a session
-    dnn.train()
-    print("\n [*] Training finished!")
+    dnn.model.load_weights(args.model_weights, by_name=True, skip_mismatch=True)
 
     dnn.predict()
     print("\n [*] Testing finished!")
