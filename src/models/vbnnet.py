@@ -8,6 +8,8 @@ import os
 import sys
 import datetime
 
+import cv2
+from PIL import Image
 import geopy
 from tqdm import tqdm
 import numpy as np
@@ -210,10 +212,13 @@ class VBNNET(DNN):
             data_helper.img_batch_load(self.data.data_info['x' + mode],
                                        self.args.batch_size,
                                        batch_id)
+        # imgs = dict(keys=imgs.keys(), values=imgs)
+        # prepro_imgs = [self.preprocess_real(img) for img in list(imgs.values())]
+
         batch_output \
             = self.data.data_info['y' + mode][batch_id * self.args.batch_size:
                                               (batch_id + 1) * self.args.batch_size]
-
+        # print(list(imgs.values()))
         outputs = self.model.predict(np.asarray(list(imgs.values())))
 
         for i, ((img_name, img), output) in enumerate(zip(imgs.items(), outputs)):
@@ -242,7 +247,7 @@ class VBNNET(DNN):
 
             self.write_log(mode + '_MAE', np.mean(metrics['MAE']),
                            sample_id)
-            self.write_log(mode + 'Error in meters', np.mean(metrics['err_meter']),
+            self.write_log(mode + ' Error in meters', np.mean(metrics['err_meter']),
                            sample_id)
 
             img_name = img_name.split('/')[-1].split('.')[0]
@@ -267,19 +272,31 @@ class VBNNET(DNN):
 
         print('Processing ', len(self.data.data_info['x' + mode]), 'Test images...')
 
-        # for img_id, img_name in enumerate(self.data.data_info['x' + mode]):
-        #     self.validate(sample=1, sample_id=img_id, mode=mode)
+        for img_id, img_name in enumerate(self.data.data_info['x' + mode]):
+            self.validate(sample=1, sample_id=img_id, mode=mode)
 
         if self.args.extra_test is not None:
             imgs_dirs = data_helper.find_files(self.args.extra_test, 'JPG')
             print('Processing ', len(imgs_dirs), 'extra test images...')
             for img_dir in imgs_dirs:
                 img_name = img_dir.split('/')[-1]
+
                 img = data_helper.imread(img_dir)
-                predicted = self.model.predict(np.expand_dims(img, 0))[0]
-                self.visualize(img,
-                               str(list(self.norm_geo2geo(predicted))[:-1]),
-                               output_dir / img_name)
+
+                # prepro_img = self.preprocess_real(img)
+                prepro_img = data_helper.preprocess(img)
+                meta_data = data_helper.metadata_read(img_dir)
+
+                predicted = self.model.predict(np.expand_dims(prepro_img, 0))[0]
+                predicted_geo = list(self.norm_geo2geo(predicted))[:-1]
+                err_m = geopy.distance.geodesic(predicted_geo, meta_data).m
+                print(err_m)
+
+                self.visualize(prepro_img,
+                               str(predicted_geo),
+                               output_dir / img_name,
+                               str(meta_data),
+                               str(round(err_m, 3)) + ' m')
 
     def visualize(self, img, predicted_info, output_dir, gt_info='NA', error='NA'):
         plt.figure()
@@ -306,3 +323,22 @@ class VBNNET(DNN):
     def norm_geo2geo(self, data):
         return data * (self.data.org_out_max - self.data.org_out_min) \
                 + self.data.org_out_min
+
+    def preprocess_real(self, real_img, blurr=5):
+        # print(np.shape(real_img))
+        real_img *= 255
+        final_img = np.ones_like(real_img)
+        for i in range(3):
+            img = np.asarray(real_img[:, :, i], dtype=np.uint8)
+
+            # img = cv2.cvtColor(real_img, cv2.COLOR_BGR2GRAY)
+            # img = cv2.threshold(img, 180, 225, cv2.THRESH_BINARY)
+            img = cv2.GaussianBlur(img, (blurr, blurr), 0)
+            _, img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            plt.imshow(img, cmap='gray')
+            plt.show()
+            final_img[:, :, i] = np.asarray(img, dtype=np.float32)
+        return final_img / 255
+
+
+

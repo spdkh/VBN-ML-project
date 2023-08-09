@@ -22,7 +22,7 @@ DATA_DIR = Path(args.data_dir)
 
 CHK_FOLDER = '_'.join([args.dataset,
                        args.dnn_type,
-                       datetime.datetime.now(pytz.timezone('US/Central')).strftime("%d-%m-%Y_time%H%M")])
+                       args.log_name])
 
 WEIGHTS_DIR = OUT_DIR / CHK_FOLDER
 check_folder(WEIGHTS_DIR)

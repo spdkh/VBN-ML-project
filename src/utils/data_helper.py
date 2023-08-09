@@ -4,8 +4,12 @@
 import os
 import glob
 
+
+import geopy.point
+from PIL.ExifTags import TAGS, GPSTAGS
 from PIL import Image
 import numpy as np
+import cv2
 import tifffile as tiff
 
 from src.utils import norm_helper
@@ -77,7 +81,7 @@ def img_batch_load(imgs_paths,
     image_batch = dict()
     for i, path in enumerate(imgs_paths):
         cur_img = imread(imgs_paths[i])
-        image_batch[path] = np.array(cur_img)
+        image_batch[path] = preprocess(cur_img)
     return image_batch
 
 
@@ -85,9 +89,65 @@ small = (615, 515)
 one_k = (1024, 768)
 two_k = (2048, 1536)
 
+
 def imread(img_path, shape=small):
-    im = Image.open(img_path)
-    # im.draft('RGB', shape)
-    im = im.resize(shape)
+    img = Image.open(img_path)
+    im = img.resize(shape)
     im = norm_helper.min_max_norm(np.asarray(im))
     return im
+
+
+def metadata_read(img_path):
+    img = Image.open(img_path)
+
+    if 'exif' in img.info.keys():
+
+        # build reverse dicts
+        _TAGS_r = dict(((v, k) for k, v in TAGS.items()))
+        _GPSTAGS_r = dict(((v, k) for k, v in GPSTAGS.items()))
+
+        exifd = img._getexif()  # this merges gpsinfo as data rather than an offset pointer
+        if "GPSInfo" in _TAGS_r.keys():
+            gpsinfo = exifd[_TAGS_r["GPSInfo"]]
+
+            lat = gpsinfo[_GPSTAGS_r['GPSLatitude']], gpsinfo[_GPSTAGS_r['GPSLatitudeRef']]
+            long = gpsinfo[_GPSTAGS_r['GPSLongitude']], gpsinfo[_GPSTAGS_r['GPSLongitudeRef']]
+            lat = str(lat[0][0]) + ' ' + str(lat[0][1]) + "m " + str(lat[0][1]) + 's ' + lat[1]
+            long = str(long[0][0]) + ' ' + str(long[0][1]) + "m " + str(long[0][1]) + 's ' + long[1]
+
+            meta_data = geopy.point.Point(lat + ' ' + long)
+
+            return meta_data.format_decimal()
+
+    print('Metadata not found!')
+    return None
+
+
+def preprocess(img):
+    img = np.asarray(img * 255, dtype='uint8')
+    z = img.reshape((-1, 3))
+
+    # convert to np.float32
+    z = np.float32(z)
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+    K = 3
+    ret, label, center = cv2.kmeans(z, K, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+
+    # Convert back into uint8, and make original image
+    center = np.uint8(center)
+    res = center[label.flatten()]
+    org_img = res.reshape((img.shape))
+
+    # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # for ch in range(3):
+    #     img = cv2.GaussianBlur(org_img[0], (5, 5), 0)
+    #
+    #     img = cv2.Canny(img, 254, 255, apertureSize=5)
+    #
+    #     kernelSize = 5
+    #     kernel = np.ones((kernelSize, kernelSize), np.uint8)
+    #
+    #     iterations = 1
+    #     img = 255 - cv2.dilate(img, kernel, iterations=iterations)
+    #     org_img[ch] = img
+    return np.asarray(org_img / 255).astype(np.float32)

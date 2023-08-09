@@ -5,6 +5,8 @@
 """
 import argparse
 
+import datetime
+import pytz
 import pathlib
 import numpy as np
 
@@ -27,7 +29,7 @@ def check_args(args):
     return args
 
 
-iterations = 5000
+iterations = 1500
 
 def parse_args():
     """
@@ -56,15 +58,18 @@ def parse_args():
 def dir_pars_args():
     dir_parser = argparse.ArgumentParser(add_help=False)
     dir_parser.add_argument("--data_dir", type=str,
-                            default="/home/sdjkhosh/VisnavPNGFiles/jpg Simulated Files/Raster",
+                            default="/home/sdjkhosh/Datasets/VisnavPNGFiles/jpg Simulated Files/Raster",
                             help='The directory of the data')
     dir_parser.add_argument('--result_dir', type=str, default='results',
                             help='Directory name to save the generated images')
     dir_parser.add_argument("--model_weights", type=str,
                             default=pathlib.Path(
                                 "results/VBN_vbnnet_14-07-2023_time1230/weights_gen_best.h5"))
-    dir_parser.add_argument('--extra_test', type=str, default='/home/sdjkhosh/VisnavPNGFiles/DJI_images',
+    dir_parser.add_argument('--extra_test', type=str, default='/home/sdjkhosh/Datasets/VisnavPNGFiles/DJI_images',
                         help='Address to the folder of images outside the test folder to be tested')
+    dir_parser.add_argument('--log_name', type=str,
+                            default=datetime.datetime.now(pytz.timezone('US/Central')).strftime("%d-%m-%Y_time%H%M"),
+                            help='Desired name for the log file instead of date and time.')
     return dir_parser
 
 
@@ -105,9 +110,9 @@ def dnn_pars_args(iterations=iterations):
     dnn_parser.add_argument('--iteration', type=int,
                         default=iterations, help='The number of epochs to run')
     dnn_parser.add_argument('--batch_iter', type=int,
-                            default=25, help='The number of iterations to load from the batch')
+                            default=1, help='The number of iterations to load from the batch')
     dnn_parser.add_argument('--n_augment', type=int,
-                            default=25, help='The number of augmented images for each batch')
+                            default=1, help='The number of augmented images for each batch')
     dnn_parser.add_argument("--seed", type=int, default=12345)
 
     return dnn_parser
