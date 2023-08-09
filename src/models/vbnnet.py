@@ -45,12 +45,6 @@ class VBNNET(DNN):
         print('model output:', self.model_output)
         self.model = Model(self.model_input,
                            self.model_output)
-        if not os.path.exists(const.SAMPLE_DIR / 'val'):
-            os.mkdir(const.SAMPLE_DIR / 'val')
-
-        self.write_log(names='Directories',
-                       logs=vars(dir_pars_args().parse_args()),
-                       mode='')
 
     def build_model(self):
         self.model.compile(loss='mean_absolute_error',
@@ -150,9 +144,13 @@ class VBNNET(DNN):
 
         text = text.replace(' ', '.')
         print(text)
-        data_helper.check_folder(WEIGHTS_DIR)
-        data_helper.check_folder(SAMPLE_DIR)
-        data_helper.check_folder(LOG_DIR)
+        data_helper.check_folder(const.WEIGHTS_DIR)
+        data_helper.check_folder(const.SAMPLE_DIR)
+        data_helper.check_folder(const.SAMPLE_DIR / 'val')
+        data_helper.check_folder(const.LOG_DIR)
+        self.write_log(names='Directories',
+                       logs=vars(dir_pars_args().parse_args()),
+                       mode='')
         self.write_log(names='DNN Params',
                        logs=text,
                        mode='')

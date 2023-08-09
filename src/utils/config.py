@@ -29,7 +29,7 @@ def check_args(args):
     return args
 
 
-iterations = 1500
+iterations = 1000
 
 def parse_args():
     """

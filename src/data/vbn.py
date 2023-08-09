@@ -35,7 +35,8 @@ class VBN(Data):
         """
             configuration after init parent
         """
-        img_paths = data_helper.find_files(const.DATA_DIR / 'JPG2', 'jpg')
+        img_paths = data_helper.find_files(const.DATA_DIR / self.data_types['x'],
+                                           'jpg')
         img_paths.sort()
         print('\nNumber of images in the path:', len(img_paths))
 

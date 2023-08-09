@@ -25,10 +25,8 @@ CHK_FOLDER = '_'.join([args.dataset,
                        args.log_name])
 
 WEIGHTS_DIR = OUT_DIR / CHK_FOLDER
-check_folder(WEIGHTS_DIR)
 
 SAMPLE_DIR = WEIGHTS_DIR / 'sampled_img'
-check_folder(SAMPLE_DIR)
 
 LOG_DIR = OUT_DIR / 'graph' / WEIGHTS_DIR
-check_folder(LOG_DIR)
+
