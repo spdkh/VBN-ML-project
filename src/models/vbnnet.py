@@ -9,6 +9,7 @@ import sys
 import datetime
 
 import cv2
+from pathlib import Path
 from PIL import Image
 import geopy
 from tqdm import tqdm
@@ -149,12 +150,15 @@ class VBNNET(DNN):
 
         text = text.replace(' ', '.')
         print(text)
+        data_helper.check_folder(WEIGHTS_DIR)
+        data_helper.check_folder(SAMPLE_DIR)
+        data_helper.check_folder(LOG_DIR)
         self.write_log(names='DNN Params',
                        logs=text,
                        mode='')
-
+        
         start_time = datetime.datetime.now()
-
+        
         self.loss_record = []
         for iteration in range(self.args.iteration):
             elapsed_time = datetime.datetime.now() - start_time
@@ -264,10 +268,14 @@ class VBNNET(DNN):
         # self.model = tf.keras.models.load_model(self.args.model_weights)
         self.args.batch_size = 1
         self.args.load_weights = 1
-        output_dir = const.SAMPLE_DIR / 'test'
-        if not os.path.exists(output_dir):
-            os.mkdir(output_dir)
-
+        output_dir = Path(self.args.model_weights).parents[0] / 'test'
+        idx = 2
+        while os.path.exists(output_dir):
+            print('Path already exists; renaming ...')
+            ext = 'test ' + str(idx)
+            output_dir = Path(self.args.model_weights).parents[0] / ext
+            idx += 1
+        data_helper.check_folder(output_dir)
         mode = 'test'
 
         print('Processing ', len(self.data.data_info['x' + mode]), 'Test images...')
