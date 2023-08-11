@@ -19,11 +19,13 @@ def main():
 
     # parse arguments
     args = parse_args()
+
     if args is None:
         sys.exit()
     tf.random.set_seed(args.seed)
 
-    print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+    print("\nNum GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
+    print()
 
     config = ConfigProto()
     config.gpu_options.allow_growth = True
@@ -51,10 +53,10 @@ def main():
     #
     # launch the graph in a session
     dnn.train()
-    print(" [*] Training finished!")
-    #
-    # # visualize learned generator
-    # dnn.visualize_results(args.iteration-1)
+    print("\n [*] Training finished!")
+
+    dnn.predict()
+    print("\n [*] Testing finished!")
 
 
 if __name__ == '__main__':

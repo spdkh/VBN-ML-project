@@ -4,8 +4,12 @@
 import os
 import glob
 
+
+import geopy.point
+from PIL.ExifTags import TAGS, GPSTAGS
 from PIL import Image
 import numpy as np
+import cv2
 import tifffile as tiff
 
 from src.utils import norm_helper
@@ -74,22 +78,46 @@ def img_batch_load(imgs_paths,
     iteration = iteration * batch_size
     imgs_paths = imgs_paths[iteration:batch_size + iteration]
 
-    image_batch = []
-    for i, _ in enumerate(imgs_paths):
+    image_batch = dict()
+    for i, path in enumerate(imgs_paths):
         cur_img = imread(imgs_paths[i])
-        cur_img = norm_helper.min_max_norm(np.array(cur_img))
-        image_batch.append(cur_img)
-
-    image_batch = np.array(image_batch)
-
+        image_batch[path] = preprocess(cur_img)
     return image_batch
 
 
+small = (615, 515)
 one_k = (1024, 768)
 two_k = (2048, 1536)
 
 
-def imread(img_path, shape=one_k):
-    im = Image.open(img_path)
-    im.draft('RGB', shape)
-    return np.asarray(im)
+def imread(img_path, shape=small):
+    img = Image.open(img_path)
+    im = img.resize(shape)
+    im = norm_helper.min_max_norm(np.asarray(im))
+    return im
+
+
+def metadata_read(img_path):
+    img = Image.open(img_path)
+
+    if 'exif' in img.info.keys():
+
+        # build reverse dicts
+        _TAGS_r = dict(((v, k) for k, v in TAGS.items()))
+        _GPSTAGS_r = dict(((v, k) for k, v in GPSTAGS.items()))
+
+        exifd = img._getexif()  # this merges gpsinfo as data rather than an offset pointer
+        if "GPSInfo" in _TAGS_r.keys():
+            gpsinfo = exifd[_TAGS_r["GPSInfo"]]
+
+            lat = gpsinfo[_GPSTAGS_r['GPSLatitude']], gpsinfo[_GPSTAGS_r['GPSLatitudeRef']]
+            long = gpsinfo[_GPSTAGS_r['GPSLongitude']], gpsinfo[_GPSTAGS_r['GPSLongitudeRef']]
+            lat = str(lat[0][0]) + ' ' + str(lat[0][1]) + "m " + str(lat[0][1]) + 's ' + lat[1]
+            long = str(long[0][0]) + ' ' + str(long[0][1]) + "m " + str(long[0][1]) + 's ' + long[1]
+
+            meta_data = geopy.point.Point(lat + ' ' + long)
+
+            return meta_data.format_decimal()
+
+    print('Metadata not found!')
+    return None

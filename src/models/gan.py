@@ -136,14 +136,14 @@ class GAN(DNN):
 
             validate_nrmse.append(np.mean(metrics['nrmse']))
             cur_lr = self.lr_controller.on_iteration_end(iteration, np.mean(metrics['nrmse']))
-            self.write_log(self.writer, 'lr_sr', cur_lr, iteration)
+            self.write_log('lr_sr', cur_lr, iteration)
             cur_lr_d = self.lr_controller.on_iteration_end(iteration, np.mean(metrics['nrmse']))
-            self.write_log(self.writer, 'lr_d', cur_lr_d, iteration)
-            self.write_log(self.writer, val_names[0], np.mean(metrics['mse']), iteration)
-            self.write_log(self.writer, val_names[1], np.mean(metrics['ssim']), iteration)
-            self.write_log(self.writer, val_names[2], np.mean(metrics['psnr']), iteration)
-            self.write_log(self.writer, val_names[3], np.mean(metrics['nrmse']), iteration)
-            self.write_log(self.writer, val_names[4], np.mean(metrics['uqi']), iteration)
+            self.write_log('lr_d', cur_lr_d, iteration)
+            self.write_log(val_names[0], np.mean(metrics['mse']), iteration)
+            self.write_log(val_names[1], np.mean(metrics['ssim']), iteration)
+            self.write_log(val_names[2], np.mean(metrics['psnr']), iteration)
+            self.write_log(val_names[3], np.mean(metrics['nrmse']), iteration)
+            self.write_log(val_names[4], np.mean(metrics['uqi']), iteration)
         else:
             plt.figure(figsize=(22, 6))
             validation_id = 0

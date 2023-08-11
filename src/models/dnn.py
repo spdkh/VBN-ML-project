@@ -28,8 +28,8 @@ class DNN(ABC):
         self.batch_id = {'train': 0, 'val': 0, 'test': 0}
 
         self.args = args
-        print(self.args)
-        print('Init DNN Arch:', self.args.dnn_type)
+        print('\nInitiated Parameters:\n', self.args)
+        print('\nInit DNN Arch:', self.args.dnn_type)
 
         module_name = '.'.join(['src.data',
                                 args.dataset.lower()])
@@ -37,9 +37,6 @@ class DNN(ABC):
                                     fromlist=[args.dataset])
         self.data = getattr(dataset_module,
                             args.dataset)(self.args)
-
-        self.scale_factor = int(self.data.output_dim[0]
-                                / self.data.input_dim[0])
 
         self.model_input = Input(self.data.input_dim)
         self.model_output = None
@@ -51,8 +48,12 @@ class DNN(ABC):
 
         self.loss_object = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
+        self.n_batches = {'train': np.shape(self.data.data_info['ytrain'])[0] // self.args.batch_size,
+                          'val': np.shape(self.data.data_info['yval'])[0] // self.args.batch_size,
+                          'test': np.shape(self.data.data_info['ytest'])[0] // self.args.batch_size}
+        print(self.n_batches)
         self.writer = tf.summary.create_file_writer(str(const.LOG_DIR))
-        print(const.LOG_DIR)
+        print('Writing Logs to:', const.LOG_DIR)
 
         super().__init__()
 
@@ -62,7 +63,7 @@ class DNN(ABC):
         """
         # how many total data in that mode exists
         data_size = len(self.data.data_info['x' + mode])
-        if data_size // self.args.batch_size - 1 <= self.batch_id[mode]:
+        if self.n_batches[mode] - 1 <= self.batch_id[mode]:
             self.batch_id[mode] = 0
         else:
             self.batch_id[mode] += 1
@@ -92,11 +93,11 @@ class DNN(ABC):
 
             if (iteration) % self.args.validate_interval == 0:
                 self.validate(iteration, sample=0)
-                self.write_log(self.writer,
+                self.write_log(
                                train_names[0],
                                np.mean(self.loss_record),
                                iteration)
-                self.write_log(self.writer,
+                self.write_log(
                                train_names[1],
                                np.mean(self.d_loss_record),
                                iteration)
@@ -105,6 +106,13 @@ class DNN(ABC):
 
             self.loss_record.append(loss_generator)
             self.d_loss_record.append(loss_discriminator)
+
+    @abstractmethod
+    def predict(self):
+        """
+
+        :return:
+        """
 
     @abstractmethod
     def train_epoch(self, batch_log: bool):
@@ -126,12 +134,12 @@ class DNN(ABC):
         """
 
     @abstractmethod
-    def validate(self, iteration, sample=0):
+    def validate(self, sample, sample_id, mode):
         """
             validate and write logs
         """
 
-    def write_log(self, writer, names, logs, batch_no=0, mode='float'):
+    def write_log(self, names, logs, batch_no=0, mode='float'):
         """
         todo: test
         Parameters
@@ -139,10 +147,14 @@ class DNN(ABC):
         names
         logs
         batch_no
+        mode
         """
+        writer = self.writer
         with writer.as_default():
             if mode == 'float':
                 tf.summary.scalar(names, logs, step=batch_no)
+            elif mode == 'image':
+                tf.summary.image(names, [logs], step=batch_no)
             else:
                 tf.summary.text(names,
                                 tf.convert_to_tensor(str(logs),
