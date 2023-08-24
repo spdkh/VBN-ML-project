@@ -289,7 +289,7 @@ class VBNNET(DNN):
                 img = data_helper.imread(img_dir)
 
                 # prepro_img = self.preprocess_real(img)
-                prepro_img = data_helper.preprocess(img)
+                prepro_img = img.copy()
                 meta_data = data_helper.metadata_read(img_dir)
 
                 predicted = self.model.predict(np.expand_dims(prepro_img, 0))[0]

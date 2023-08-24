@@ -85,7 +85,7 @@ def img_batch_load(imgs_paths,
     image_batch = dict()
     for i, path in enumerate(imgs_paths):
         cur_img = imread(imgs_paths[i])
-        image_batch[path] = preprocess(cur_img)
+        image_batch[path] = cur_img.copy()
     return image_batch
 
 

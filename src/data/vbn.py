@@ -115,7 +115,7 @@ class VBN(Data):
                                test_size=0.5,
                                random_state=self.args.seed)
 
-        sample_input_img = data_helper.preprocess(data_helper.imread(self.data_info['xtrain'][0]))
+        sample_input_img = data_helper.imread(self.data_info['xtrain'][0])
         self.input_dim = np.shape(sample_input_img)
         self.output_dim = 3  # np.shape(class_ids)
         print('Sample image size:', self.input_dim)
