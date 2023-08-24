@@ -45,7 +45,8 @@ def lat_lon_to_spherical_mercator(lat, lon):
 map_size = (400, 400)
 
 
-def get_static_map_image(lat, lon, zoom=15, size=map_size, api_key=None):
+def get_static_map_image(lat, lon, zoom=15, size=map_size,
+                         api_key='AIzaSyBI743mOAfTFDyuJt-cpTMAy-_58oq-vu8'):
     base_url = "https://maps.googleapis.com/maps/api/staticmap"
     params = {
         "center": f"{lat},{lon}",

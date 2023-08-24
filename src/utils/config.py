@@ -51,6 +51,8 @@ def parse_args():
                         )
     parser.add_argument("--validate_interval", type=int, default=1)
     parser.add_argument("--validate_num", type=int, default=1)
+    parser.add_argument("--coords", type=float, nargs='+', default=[35.1270, -89.8118, 15],
+                        help='Center latitude, longitude, longitude, zoom')
 
     return check_args(parser.parse_args())
 
