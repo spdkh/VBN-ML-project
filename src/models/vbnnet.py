@@ -21,7 +21,6 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Model
 
 from src.models.dnn import DNN
-from src.utils.img_helper import img_comp
 from src.utils import const, data_helper, norm_helper
 from src.utils.architectures.regression import simple_dense
 from src.utils.architectures.transfer_learning import vgg16

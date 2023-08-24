@@ -25,10 +25,13 @@ def check_folder(log_dir):
             log_dir: str
                 directory to check
     """
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-        return False
-    return True
+    if os.path.exists(log_dir):
+        print(log_dir, 'Folder Exists.')
+        return True
+    print('Creating Folder', log_dir)
+    os.makedirs(log_dir)
+    return False
+
 
 
 def find_files(path, ext):

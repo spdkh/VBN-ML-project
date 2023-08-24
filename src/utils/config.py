@@ -17,9 +17,6 @@ def check_args(args):
     """
     checking arguments
     """
-    # --checkpoint_dir
-    check_folder(args.data_dir)
-
     # --iteration
     assert args.iteration >= 1, 'number of iterations must be larger than or equal to one'
 
@@ -60,7 +57,7 @@ def parse_args():
 def dir_pars_args():
     dir_parser = argparse.ArgumentParser(add_help=False)
     dir_parser.add_argument("--data_dir", type=str,
-                            default="/home/sdjkhosh/Datasets/VisnavPNGFiles/jpg Simulated Files/Raster",
+                            default="/home/sdjkhosh/Datasets/Satellite",
                             help='The directory of the data')
     dir_parser.add_argument('--result_dir', type=str, default='results',
                             help='Directory name to save the generated images')
@@ -82,7 +79,7 @@ def dnn_pars_args(iterations=iterations):
                         choices=['max',
                                  'min_max',
                                  'prctile'])
-    dnn_parser.add_argument('--dataset', type=str, default='VBN',
+    dnn_parser.add_argument('--dataset', type=str, default='Satellite',
                         choices=['FixedCell', 'FairSIM', 'VBN'])
     dnn_parser.add_argument('--task', type=str, default=None,
                         choices=[None, 'super_resolution'],
