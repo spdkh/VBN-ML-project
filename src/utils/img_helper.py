@@ -53,3 +53,4 @@ def plot_multy(imgs, cols, rows=1, titles=None):
 
     # show the figure
     plt.show()
+

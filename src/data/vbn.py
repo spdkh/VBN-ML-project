@@ -27,18 +27,20 @@ class VBN(Data):
         Data.__init__(self, args)
 
         self.data_types = {'x': 'JPG2', 'y': 'MetaData2'}
-
-        self.config()
+        self.img_paths = data_helper.find_files(const.DATA_DIR / self.data_types['x'],
+                                           'jpg')
+        self.img_paths.sort()
+        self.network_out = None  # labels (lat, long, alt)
+        self.org_out_min = None  # minimum of labels
+        self.org_out_max = None  # maximum of labels
 
 
     def config(self):
         """
             configuration after init parent
         """
-        img_paths = data_helper.find_files(const.DATA_DIR / self.data_types['x'],
-                                           'jpg')
-        img_paths.sort()
-        print('\nNumber of images in the path:', len(img_paths))
+
+        print('\nNumber of images in the path:', len(self.img_paths))
 
         text_paths = data_helper.find_files(const.DATA_DIR, 'txt')
         text_paths.sort()
@@ -60,14 +62,17 @@ class VBN(Data):
         print('All metadata:')
         print(meta_df)
 
-        network_out = meta_df.loc['Platform_position_LatLongAlt', :]
-        network_out = network_out.str.split(" ", expand=True).iloc[:, 1:-1].astype('float64')
-        network_out.columns = ['Lat', 'Long', 'Alt']
+        self.network_out = meta_df.loc['Platform_position_LatLongAlt', :]
+        self.network_out = network_out.str.split(" ", expand=True).iloc[:, 1:-1].astype('float64')
+        self.network_out.columns = ['Lat', 'Long', 'Alt']
         print('Network Outputs:')
-        print(network_out)
+        print(self.network_out)
+        self.geo_calcs()
+        self.train_test_split()
 
-        self.org_out_min = np.min(network_out, axis=0)
-        self.org_out_max = np.max(network_out, axis=0)
+    def geo_calcs(self):
+        self.org_out_min = np.min(self.network_out, axis=0)
+        self.org_out_max = np.max(self.network_out, axis=0)
 
         print('Min Lat, Long, Alt:', self.org_out_min)
         print('Max Lat, Long, Alt:', self.org_out_max)
@@ -84,26 +89,25 @@ class VBN(Data):
         print('Width =', land_width, 'Km')
         print('Height =', land_height, 'Km')
 
-
         # only applicable if the images form a recangle overall
         land_area = land_width * land_height
         print('Land area = ', land_area, 'Km^2')
 
         # only applicable if the images forming a rectangle do not overlap
-        img_area = land_area / len(network_out.index)
+        img_area = land_area / len(self.network_out.index)
         print('Area covered by each image =', img_area, 'Km^2')
 
-
-
-        y_normalized = norm_helper.min_max_norm(network_out)
+    def train_test_split(self):
+        y_normalized = norm_helper.min_max_norm(self.network_out)
         print('Normalized outputs (y_normalized):')
         print(y_normalized)
 
-        class_ids = keras.utils.to_categorical(range(len(network_out.columns))).tolist()
+        class_ids = keras.utils.to_categorical(range(len(self.network_out.columns))).tolist()
         print('class ids:', class_ids, np.shape(class_ids))
 
+        print(np.shape(self.img_paths), np.shape(y_normalized))
         self.data_info['xtrain'], x_test, self.data_info['ytrain'], y_test \
-            = train_test_split(img_paths, y_normalized,
+            = train_test_split(self.img_paths, y_normalized,
                                test_size=0.2,
                                random_state=self.args.seed)
         self.data_info['xval'], self.data_info['xtest'], self.data_info['yval'], self.data_info['ytest'] \
@@ -111,9 +115,9 @@ class VBN(Data):
                                test_size=0.5,
                                random_state=self.args.seed)
 
-        sample_input_img = data_helper.preprocess(data_helper.imread(self.data_info['xtrain'][0]))
+        sample_input_img = data_helper.imread(self.data_info['xtrain'][0])
         self.input_dim = np.shape(sample_input_img)
-        self.output_dim = 3 #np.shape(class_ids)
+        self.output_dim = 3  # np.shape(class_ids)
         print('Sample image size:', self.input_dim)
         print('X_train size:', np.shape(self.data_info['xtrain']))
         print('X_val size:', np.shape(self.data_info['xval']))

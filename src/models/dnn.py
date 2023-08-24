@@ -35,8 +35,10 @@ class DNN(ABC):
                                 args.dataset.lower()])
         dataset_module = __import__(module_name,
                                     fromlist=[args.dataset])
+        print('Dataset:', module_name)
         self.data = getattr(dataset_module,
                             args.dataset)(self.args)
+        self.data.config()
 
         self.model_input = Input(self.data.input_dim)
         self.model_output = None

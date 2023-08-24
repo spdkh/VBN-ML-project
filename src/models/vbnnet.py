@@ -21,7 +21,6 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Model
 
 from src.models.dnn import DNN
-from src.utils.img_helper import img_comp
 from src.utils import const, data_helper, norm_helper
 from src.utils.architectures.regression import simple_dense
 from src.utils.architectures.transfer_learning import vgg16
@@ -290,7 +289,7 @@ class VBNNET(DNN):
                 img = data_helper.imread(img_dir)
 
                 # prepro_img = self.preprocess_real(img)
-                prepro_img = data_helper.preprocess(img)
+                prepro_img = img.copy()
                 meta_data = data_helper.metadata_read(img_dir)
 
                 predicted = self.model.predict(np.expand_dims(prepro_img, 0))[0]
