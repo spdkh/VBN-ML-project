@@ -121,6 +121,7 @@ def metadata_read(img_path):
 
     print('Metadata not found!')
     return None
+<<<<<<< HEAD
 
 
 def preprocess(img):
@@ -195,3 +196,5 @@ def simplify_image_with_hough(image, animate=True):
 
     # Combine the original image with the detected lines
     return cv2.addWeighted(image, 0, line_image, 1, 1)
+=======
+>>>>>>> caa657d852fd7421da00f14e5e025a122a9d03c0
