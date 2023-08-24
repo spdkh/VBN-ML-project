@@ -1,4 +1,7 @@
 import math
+from mmap import MAP_SHARED
+import requests
+from io import BytesIO
 
 
 # @title Mathematical Conversions
@@ -45,7 +48,8 @@ def lat_lon_to_spherical_mercator(lat, lon):
 map_size = (400, 400)
 
 
-def get_static_map_image(lat, lon, zoom=15, size=map_size, api_key=None):
+def get_static_map_image(lat, lon, zoom=15, size=map_size,
+                         api_key='AIzaSyBI743mOAfTFDyuJt-cpTMAy-_58oq-vu8'):
     base_url = "https://maps.googleapis.com/maps/api/staticmap"
     params = {
         "center": f"{lat},{lon}",
@@ -86,6 +90,22 @@ def calculate_bounding_box(center_lat, center_lon, zoom, map_size=map_size):
     bottom_right_lon = center_lon + (bottom_right_x / world_width - 0.5) * 360
 
     return top_left_lat, top_left_lon, bottom_right_lat, bottom_right_lon
+
+
+def inverse_calculate_bounding_box(top_left_lat, top_left_lon, bottom_right_lat, bottom_right_lon, map_width,
+                                   map_height):
+    center_lat = (top_left_lat + bottom_right_lat) / 2
+    center_lon = (top_left_lon + bottom_right_lon) / 2
+
+    lat_range = abs(top_left_lat - bottom_right_lat)
+    lon_range = abs(top_left_lon - bottom_right_lon)
+
+    lat_degrees_per_pixel = lat_range / map_height
+    lon_degrees_per_pixel = lon_range / map_width
+
+    zoom = int(-math.log2(max(lat_degrees_per_pixel, lon_degrees_per_pixel)))
+
+    return center_lat, center_lon, zoom
 
 
 def overlapped(label_a: tuple, label_b: tuple, overlap: int = 25):

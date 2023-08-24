@@ -25,9 +25,13 @@ def check_folder(log_dir):
             log_dir: str
                 directory to check
     """
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-    return log_dir
+    if os.path.exists(log_dir):
+        print(log_dir, 'Folder Exists.')
+        return True
+    print('Creating Folder', log_dir)
+    os.makedirs(log_dir)
+    return False
+
 
 
 def find_files(path, ext):
@@ -81,7 +85,7 @@ def img_batch_load(imgs_paths,
     image_batch = dict()
     for i, path in enumerate(imgs_paths):
         cur_img = imread(imgs_paths[i])
-        image_batch[path] = preprocess(cur_img)
+        image_batch[path] = cur_img.copy()
     return image_batch
 
 
