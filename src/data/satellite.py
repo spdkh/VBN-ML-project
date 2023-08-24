@@ -25,6 +25,8 @@ class Satellite(Data):
             args
         """
         Data.__init__(self, args)
+        self.data_types = {'x': 'images', 'y': 'MetaData2'}
+
         if not data_helper.check_folder(const.DATA_DIR):
             self.gen_data()
         self.config()
@@ -38,10 +40,6 @@ class Satellite(Data):
         img_paths.sort()
         print('\nNumber of images in the path:', len(img_paths))
 
-        text_paths = data_helper.find_files(const.DATA_DIR, 'txt')
-        text_paths.sort()
-        print('Number of texts in the path:', len(text_paths))
-
         meta_df = pd.read_csv(text_paths[0], sep=':', index_col=0,
                               names=[0])
 
@@ -49,15 +47,15 @@ class Satellite(Data):
         print(meta_df)
 
         meta_dfs = []
-        for i, meta_data in enumerate(text_paths[:-1]):
-            df = pd.read_csv(meta_data, sep=':', index_col=0, names=[i + 1])
+        for i, path in enumerate(img_paths):
+            df = pd.DataFrame(os.path.basename(path), sep='_', index_col=0, names=[i + 1])
             meta_dfs.append(df.iloc[:, 0])
 
         meta_df = pd.concat(meta_dfs, axis=1)
 
         print('All metadata:')
         print(meta_df)
-
+        quit()
         network_out = meta_df.loc['Platform_position_LatLongAlt', :]
         network_out = network_out.str.split(" ", expand=True).iloc[:, 1:-1].astype('float64')
         network_out.columns = ['Lat', 'Long', 'Alt']
@@ -146,6 +144,8 @@ class Satellite(Data):
         plt.ylabel("Latitude")
         plt.title("Satellite Image")
         plt.show()
+        plt.savefig(const.DATA_DIR / "map.jpg")  # Save sample results
+        plt.close("all")  # Close figures to avoid memory leak
 
         gen_raster_from_map((top_left_lat, top_left_lon),
                             (bottom_right_lat, bottom_right_lon),
@@ -174,7 +174,7 @@ class Satellite(Data):
             # print('Current Lat', lat_i)
             while lon_j <= buttom_right_coords[-1] + raster_w:
                 # print('Current Long: ', lon_j)
-                out_name = str(i) + '_' + str(j) + '_' + str(lat_i) + '_' + str(lon_j) + '_' + str(zoom)
+                out_name = str(i) + '_' + str(j) + '_' + str(lat_i) + '_' + str(lon_j) + '_' + str(zoom) + '.jpg'
                 output_dir = const.DATA_DIR / 'images' / out_name
                 raster_data = get_static_map_image(lat_i, lon_j, zoom=raster_zoom, api_key=api_key)
 

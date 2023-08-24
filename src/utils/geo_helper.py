@@ -89,6 +89,22 @@ def calculate_bounding_box(center_lat, center_lon, zoom, map_size=map_size):
     return top_left_lat, top_left_lon, bottom_right_lat, bottom_right_lon
 
 
+def inverse_calculate_bounding_box(top_left_lat, top_left_lon, bottom_right_lat, bottom_right_lon, map_width,
+                                   map_height):
+    center_lat = (top_left_lat + bottom_right_lat) / 2
+    center_lon = (top_left_lon + bottom_right_lon) / 2
+
+    lat_range = abs(top_left_lat - bottom_right_lat)
+    lon_range = abs(top_left_lon - bottom_right_lon)
+
+    lat_degrees_per_pixel = lat_range / map_height
+    lon_degrees_per_pixel = lon_range / map_width
+
+    zoom = int(-math.log2(max(lat_degrees_per_pixel, lon_degrees_per_pixel)))
+
+    return center_lat, center_lon, zoom
+
+
 def overlapped(label_a: tuple, label_b: tuple, overlap: int = 25):
     coords_a = calculate_bounding_box(label_a[0], label_a[1], label_a[2])
     coords_b = calculate_bounding_box(label_b[0], label_b[1], label_b[2])
