@@ -3,8 +3,6 @@
     author: spdkh
     date: June 2023
 """
-import glob
-
 import numpy as np
 import pandas as pd
 import geopy.distance
@@ -53,8 +51,8 @@ class VBN(Data):
 
         meta_dfs = []
         for i, meta_data in enumerate(text_paths[:-1]):
-            df = pd.read_csv(meta_data, sep=':', index_col=0, names=[i + 1])
-            meta_dfs.append(df.iloc[:, 0])
+            df_i = pd.read_csv(meta_data, sep=':', index_col=0, names=[i + 1])
+            meta_dfs.append(df_i.iloc[:, 0])
 
         meta_df = pd.concat(meta_dfs, axis=1)
 
@@ -62,7 +60,8 @@ class VBN(Data):
         print(meta_df)
 
         self.network_out = meta_df.loc['Platform_position_LatLongAlt', :]
-        self.network_out = network_out.str.split(" ", expand=True).iloc[:, 1:-1].astype('float64')
+        self.network_out =\
+            self.network_out.str.split(" ", expand=True).iloc[:, 1:-1].astype('float64')
         self.network_out.columns = ['Lat', 'Long', 'Alt']
         print('Network Outputs:')
         print(self.network_out)
@@ -70,6 +69,12 @@ class VBN(Data):
         self.train_test_split()
 
     def geo_calcs(self):
+        """
+         Gives information about the geolocation including
+         minimum and maximum lat, long, alt, also
+         area, width, height, etc in meters.
+
+        """
         self.org_out_min = np.min(self.network_out, axis=0)
         self.org_out_max = np.max(self.network_out, axis=0)
 
@@ -97,6 +102,9 @@ class VBN(Data):
         print('Area covered by each image =', img_area, 'Km^2')
 
     def train_test_split(self):
+        """
+        Splits data in train, test, validation sets
+        """
         y_normalized = norm_helper.min_max_norm(self.network_out)
         print('Normalized outputs (y_normalized):')
         print(y_normalized)
@@ -109,7 +117,8 @@ class VBN(Data):
             = train_test_split(self.img_paths, y_normalized,
                                test_size=0.2,
                                random_state=self.args.seed)
-        self.data_info['xval'], self.data_info['xtest'], self.data_info['yval'], self.data_info['ytest'] \
+        self.data_info['xval'], self.data_info['xtest'],\
+        self.data_info['yval'], self.data_info['ytest'] \
             = train_test_split(x_test, y_test,
                                test_size=0.5,
                                random_state=self.args.seed)

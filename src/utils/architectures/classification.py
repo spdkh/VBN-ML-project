@@ -1,3 +1,6 @@
+"""
+    Classification architectures
+"""
 from keras.layers import Activation, Convolution2D, Dropout, Conv2D
 from keras.layers import AveragePooling2D, BatchNormalization
 from keras.layers import GlobalAveragePooling2D
@@ -11,14 +14,14 @@ from keras import layers
 from keras.regularizers import l2
 
 
-def simple_CNN(input_shape, num_classes):
+def simple_cnn(in_shape, n_classes):
     """
         Face classification
         source: https://github.com/oarriaga/face_classification/blob/master/src/models/cnn.py
     """
     model = Sequential()
     model.add(Convolution2D(filters=16, kernel_size=(7, 7), padding='same',
-                            name='image_array', input_shape=input_shape))
+                            name='image_array', input_shape=in_shape))
     model.add(BatchNormalization())
     model.add(Convolution2D(filters=16, kernel_size=(7, 7), padding='same'))
     model.add(BatchNormalization())
@@ -53,17 +56,21 @@ def simple_CNN(input_shape, num_classes):
     model.add(Convolution2D(filters=256, kernel_size=(3, 3), padding='same'))
     model.add(BatchNormalization())
     model.add(Convolution2D(
-        filters=num_classes, kernel_size=(3, 3), padding='same'))
+        filters=n_classes, kernel_size=(3, 3), padding='same'))
     model.add(GlobalAveragePooling2D())
     model.add(Activation('softmax', name='predictions'))
     return model
 
 
-def simpler_CNN(input_shape, num_classes):
-
+def simpler_cnn(in_shape, n_classes):
+    """
+    :param in_shape:
+    :param n_classes:
+    :return:
+    """
     model = Sequential()
     model.add(Convolution2D(filters=16, kernel_size=(5, 5), padding='same',
-                            name='image_array', input_shape=input_shape))
+                            name='image_array', input_shape=in_shape))
     model.add(BatchNormalization())
     model.add(Convolution2D(filters=16, kernel_size=(5, 5),
                             strides=(2, 2), padding='same'))
@@ -102,7 +109,7 @@ def simpler_CNN(input_shape, num_classes):
 
     model.add(Convolution2D(filters=256, kernel_size=(1, 1), padding='same'))
     model.add(BatchNormalization())
-    model.add(Convolution2D(filters=num_classes, kernel_size=(3, 3),
+    model.add(Convolution2D(filters=n_classes, kernel_size=(3, 3),
                             strides=(2, 2), padding='same'))
 
     model.add(Flatten())
@@ -111,11 +118,18 @@ def simpler_CNN(input_shape, num_classes):
     return model
 
 
-def tiny_XCEPTION(input_shape, num_classes, l2_regularization=0.01):
+def tiny_exception(in_shape, n_classes, l2_regularization=0.01):
+    """
+    ??
+    :param in_shape:
+    :param n_classes:
+    :param l2_regularization:
+    :return:
+    """
     regularization = l2(l2_regularization)
 
     # base
-    img_input = Input(input_shape)
+    img_input = Input(in_shape)
     x = Conv2D(5, (3, 3), strides=(1, 1), kernel_regularizer=regularization,
                use_bias=False)(img_input)
     x = BatchNormalization()(x)
@@ -197,7 +211,7 @@ def tiny_XCEPTION(input_shape, num_classes, l2_regularization=0.01):
     x = MaxPooling2D((3, 3), strides=(2, 2), padding='same')(x)
     x = layers.add([x, residual])
 
-    x = Conv2D(num_classes, (3, 3),
+    x = Conv2D(n_classes, (3, 3),
                # kernel_regularizer=regularization,
                padding='same')(x)
     x = GlobalAveragePooling2D()(x)
@@ -207,11 +221,17 @@ def tiny_XCEPTION(input_shape, num_classes, l2_regularization=0.01):
     return model
 
 
-def mini_XCEPTION(input_shape, num_classes, l2_regularization=0.01):
+def mini_exception(in_shape, n_classes, l2_regularization=0.01):
+    """
+    :param in_shape:
+    :param n_classes:
+    :param l2_regularization:
+    :return:
+    """
     regularization = l2(l2_regularization)
 
     # base
-    img_input = Input(input_shape)
+    img_input = Input(in_shape)
     x = Conv2D(8, (3, 3), strides=(1, 1), kernel_regularizer=regularization,
                use_bias=False)(img_input)
     x = BatchNormalization()(x)
@@ -293,7 +313,7 @@ def mini_XCEPTION(input_shape, num_classes, l2_regularization=0.01):
     x = MaxPooling2D((3, 3), strides=(2, 2), padding='same')(x)
     x = layers.add([x, residual])
 
-    x = Conv2D(num_classes, (3, 3),
+    x = Conv2D(n_classes, (3, 3),
                # kernel_regularizer=regularization,
                padding='same')(x)
     x = GlobalAveragePooling2D()(x)
@@ -303,8 +323,14 @@ def mini_XCEPTION(input_shape, num_classes, l2_regularization=0.01):
     return model
 
 
-def big_XCEPTION(input_shape, num_classes):
-    img_input = Input(input_shape)
+def big_exception(in_shape, n_classes):
+    """
+
+    :param in_shape:
+    :param n_classes:
+    :return:
+    """
+    img_input = Input(in_shape)
     x = Conv2D(32, (3, 3), strides=(2, 2), use_bias=False)(img_input)
     x = BatchNormalization(name='block1_conv1_bn')(x)
     x = Activation('relu', name='block1_conv1_act')(x)
@@ -338,7 +364,7 @@ def big_XCEPTION(input_shape, num_classes):
 
     x = MaxPooling2D((3, 3), strides=(2, 2), padding='same')(x)
     x = layers.add([x, residual])
-    x = Conv2D(num_classes, (3, 3),
+    x = Conv2D(n_classes, (3, 3),
                # kernel_regularizer=regularization,
                padding='same')(x)
     x = GlobalAveragePooling2D()(x)
@@ -348,14 +374,14 @@ def big_XCEPTION(input_shape, num_classes):
     return model
 
 
-if __name__ == "__main__":
-    input_shape = (64, 64, 1)
-    num_classes = 7
-    # model = tiny_XCEPTION(input_shape, num_classes)
-    # model.summary()
-    # model = mini_XCEPTION(input_shape, num_classes)
-    # model.summary()
-    # model = big_XCEPTION(input_shape, num_classes)
-    # model.summary()
-    model = simple_CNN((48, 48, 1), num_classes)
-    model.summary()
+# if __name__ == "__main__":
+#     in_shape = (64, 64, 1)
+#     n_classes = 7
+#     # model = tiny_exception(in_shape, n_classes)
+#     # model.summary()
+#     # model = mini_exception(in_shape, n_classes)
+#     # model.summary()
+#     # model = big_exception(in_shape, n_classes)
+#     # model.summary()
+#     model = simple_cnn((48, 48, 1), n_classes)
+#     model.summary()

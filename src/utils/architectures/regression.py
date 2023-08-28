@@ -1,3 +1,6 @@
+"""
+    Regression architectures
+"""
 from tensorflow.keras.layers import Dense, Flatten
 
 

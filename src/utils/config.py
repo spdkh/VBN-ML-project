@@ -3,14 +3,12 @@
     date: May 10, 2022
     parsing and configuration
 """
+import pathlib
 import argparse
 
 import datetime
 import pytz
-import pathlib
-import numpy as np
 
-from src.utils.data_helper import check_folder
 
 
 def check_args(args):
@@ -26,7 +24,8 @@ def check_args(args):
     return args
 
 
-iterations = 1000
+ITER = 300
+
 
 def parse_args():
     """
@@ -35,7 +34,7 @@ def parse_args():
     -------
     arguments
     """
-    dnn_parser = dnn_pars_args(iterations)
+    dnn_parser = dnn_pars_args(ITER)
     dir_parser = dir_pars_args()
 
     parser = argparse.ArgumentParser(parents=[dir_parser, dnn_parser],
@@ -44,7 +43,7 @@ def parse_args():
     parser.add_argument("--sample_interval",
                         type=int,
                         default=1
-                        # default=int(1 + 10 * (np.log10(1 + iterations // 50)))
+                        # default=int(1 + 10 * (np.log10(1 + ITER // 50)))
                         )
     parser.add_argument("--validate_interval", type=int, default=1)
     parser.add_argument("--validate_num", type=int, default=1)
@@ -55,6 +54,10 @@ def parse_args():
 
 
 def dir_pars_args():
+    """
+    directories
+    :return:
+    """
     dir_parser = argparse.ArgumentParser(add_help=False)
     dir_parser.add_argument("--data_dir", type=str,
                             default="/home/sdjkhosh/Datasets/Satellite",
@@ -63,8 +66,9 @@ def dir_pars_args():
                             help='Directory name to save the generated images')
     dir_parser.add_argument("--model_weights", type=str,
                             default=pathlib.Path(
-                                "results/VBN_vbnnet_14-07-2023_time1230/weights_gen_best.h5"))
-    dir_parser.add_argument('--extra_test', type=str, default='/home/sdjkhosh/Datasets/VisnavPNGFiles/DJI_images',
+                                "results/Satellite_vbnnet_24-08-2023_time1647/weights_gen_best.h5"))
+    dir_parser.add_argument('--extra_test', type=str,
+                            default='/home/sdjkhosh/Datasets/VisnavPNGFiles/DJI_images',
                         help='Address to the folder of images outside the test folder to be tested')
     dir_parser.add_argument('--log_name', type=str,
                             default=datetime.datetime.now(pytz.timezone('US/Central')).strftime("%d-%m-%Y_time%H%M"),
@@ -72,7 +76,12 @@ def dir_pars_args():
     return dir_parser
 
 
-def dnn_pars_args(iterations=iterations):
+def dnn_pars_args(iterations=ITER):
+    """
+    DNN hyper parameters, related parameters
+    :param iterations:
+    :return:
+    """
     dnn_parser = argparse.ArgumentParser(add_help=False)
     dnn_parser.add_argument("--norm", type=str, default='min_max',
                         help='Image normalization Method.',
@@ -118,6 +127,10 @@ def dnn_pars_args(iterations=iterations):
 
 
 def gan_parse_args():
+    """
+    GAN parameters
+    :return:
+    """
     gan_parser = argparse.ArgumentParser(add_help=False)
     # Discriminator Setup
     gan_parser.add_argument("--d_start_lr", type=float, default=1e-6)  # 2e-5
@@ -131,6 +144,10 @@ def gan_parse_args():
 
 
 def rcan_parse_args():
+    """
+    Parameters for the RCAN architecture
+    :return:
+    """
     rcan_parser = argparse.ArgumentParser(add_help=False)
     rcan_parser.add_argument("--n_ResGroup", type=int, default=2)
     rcan_parser.add_argument("--n_rcab", type=int, default=3)

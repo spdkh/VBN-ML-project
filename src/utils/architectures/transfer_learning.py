@@ -5,14 +5,18 @@
 import numpy as np
 
 from keras import models
-from keras import layers
-from keras import optimizers
 from keras.applications import VGG16
 
 from src.utils.architectures import basic_arch
 
 
 def vgg16(net_input, n_classes):
+    """
+        VGG16 transfer learning
+    :param net_input:
+    :param n_classes:
+    :return:
+    """
     image_size = np.shape(net_input)[1:]
 
     vgg_conv = VGG16(weights='imagenet', include_top=False, input_shape=image_size)
