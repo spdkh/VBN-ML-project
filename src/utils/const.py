@@ -2,12 +2,9 @@
     Author: SPDKH
     Date: Spring 1400
 """
-import pytz
-import datetime
 from pathlib import Path
 
 from src.utils.config import parse_args
-from src.utils.data_helper import check_folder
 
 args = parse_args()
 
@@ -29,4 +26,3 @@ WEIGHTS_DIR = OUT_DIR / CHK_FOLDER
 SAMPLE_DIR = WEIGHTS_DIR / 'sampled_img'
 
 LOG_DIR = OUT_DIR / 'graph' / WEIGHTS_DIR
-

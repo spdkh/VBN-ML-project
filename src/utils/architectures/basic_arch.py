@@ -1,5 +1,7 @@
+"""
+    Basic Architectures
+"""
 from tensorflow.keras.layers import Dense, Flatten, Convolution2D
-import tensorflow as tf
 
 
 def simple_dense(net_input, n_classes,

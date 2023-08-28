@@ -3,14 +3,10 @@
     todo: complete
 """
 from __future__ import division
-import sys
-import os
 from abc import ABC, abstractmethod
-import datetime
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input
 
 from src.utils import const
@@ -43,16 +39,17 @@ class DNN(ABC):
         self.model_input = Input(self.data.input_dim)
         self.model_output = None
         self.model = None
-        self.optimizer = self.args.opt
         self.lr_controller = None
         self.loss_record = []
-        self.d_loss_record = []
 
         self.loss_object = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
-        self.n_batches = {'train': np.shape(self.data.data_info['ytrain'])[0] // self.args.batch_size,
-                          'val': np.shape(self.data.data_info['yval'])[0] // self.args.batch_size,
-                          'test': np.shape(self.data.data_info['ytest'])[0] // self.args.batch_size}
+        self.n_batches = {'train': np.shape(self.data.data_info['ytrain'])[0]
+                                   // self.args.batch_size,
+                          'val': np.shape(self.data.data_info['yval'])[0]
+                                 // self.args.batch_size,
+                          'test': np.shape(self.data.data_info['ytest'])[0]
+                                  // self.args.batch_size}
         print(self.n_batches)
         self.writer = tf.summary.create_file_writer(str(const.LOG_DIR))
         print('Writing Logs to:', const.LOG_DIR)
@@ -64,7 +61,7 @@ class DNN(ABC):
             takes care of loading batches iteratively
         """
         # how many total data in that mode exists
-        data_size = len(self.data.data_info['x' + mode])
+        # data_size = len(self.data.data_info['x' + mode])
         if self.n_batches[mode] - 1 <= self.batch_id[mode]:
             self.batch_id[mode] = 0
         else:
@@ -72,42 +69,11 @@ class DNN(ABC):
 
         return self.batch_id[mode]
 
+    @abstractmethod
     def train(self):
         """
             iterate over epochs
         """
-        start_time = datetime.datetime.now()
-        self.lr_controller.on_train_begin()
-        train_names = ['Generator_loss', 'Discriminator_loss']
-
-        print('Training...')
-
-        for iteration in range(self.args.iteration):
-            elapsed_time = datetime.datetime.now() - start_time
-
-            loss_generator, loss_discriminator = self.train_epoch()
-
-            tf.print("%d epoch: time: %s, g_loss = %s, d_loss= " % (
-                iteration + 1,
-                elapsed_time,
-                loss_generator),
-                     loss_discriminator, output_stream=sys.stdout)
-
-            if (iteration) % self.args.validate_interval == 0:
-                self.validate(iteration, sample=0)
-                self.write_log(
-                               train_names[0],
-                               np.mean(self.loss_record),
-                               iteration)
-                self.write_log(
-                               train_names[1],
-                               np.mean(self.d_loss_record),
-                               iteration)
-                self.d_loss_record = []
-                self.loss_record = []
-
-            self.loss_record.append(loss_generator)
-            self.d_loss_record.append(loss_discriminator)
 
     @abstractmethod
     def predict(self):
@@ -117,11 +83,14 @@ class DNN(ABC):
         """
 
     @abstractmethod
-    def train_epoch(self, batch_log: bool):
+    def train_epoch(self, iteration, batch_log):
         """
             Training process per epoch
             loop over all data samples / number of batches
             train per batch to complete an epoch
+        :param iteration: int
+        :param batch_log: bool
+        :return:
         """
 
     @abstractmethod

@@ -5,24 +5,18 @@
     date: 2023
 """
 import os
-import sys
 import datetime
-
-import cv2
 from pathlib import Path
-from PIL import Image
+
 import geopy
 from tqdm import tqdm
 import numpy as np
-from matplotlib import pyplot as plt
 import visualkeras
-import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Model
 
 from src.models.dnn import DNN
 from src.utils import const, data_helper, norm_helper
-from src.utils.architectures.regression import simple_dense
 from src.utils.architectures.transfer_learning import vgg16
 from src.utils.config import dnn_pars_args, dir_pars_args
 
@@ -50,8 +44,10 @@ class VBNNET(DNN):
                            optimizer='adam',
                            metrics=['mean_absolute_error'])
         print(self.model.summary())
-        # tf.keras.utils.plot_model(self.model, to_file='Model.png', show_shapes=True, dpi=64, rankdir='LR')
-        visualkeras.layered_view(self.model, draw_volume=False, legend=True, to_file='Model2.png')  # write to disk
+        # tf.keras.utils.plot_model(self.model, to_file='Model.png',
+        # show_shapes=True, dpi=64, rankdir='LR')
+        # write to disk
+        visualkeras.layered_view(self.model, draw_volume=False, legend=True, to_file='Model2.png')
 
     def train_epoch(self, iteration, batch_log: bool = False):
         """
@@ -66,7 +62,7 @@ class VBNNET(DNN):
         loss_record = []
         with tqdm(total=self.args.batch_iter) as pbar:
             # while batch_id != 0:
-            for k in range(self.args.batch_iter):
+            for _ in range(self.args.batch_iter):
                 batch_imgs = \
                     data_helper.img_batch_load(self.data.data_info['xtrain'],
                                                self.args.batch_size,
@@ -109,10 +105,8 @@ class VBNNET(DNN):
                 elapsed_time = datetime.datetime.now() - start_time
                 batch_loss = np.mean(loss_record)
                 if batch_log:
-                    print("%d batch iteration: time: %s, batch_loss = %s" % (
-                        batch_id,
-                        elapsed_time,
-                        batch_loss))
+                    print(f"{batch_id} batch iteration: time: "
+                          f"{elapsed_time}, batch_loss = {batch_loss}")
 
                 self.write_log(
                     'full train loss',
@@ -153,9 +147,9 @@ class VBNNET(DNN):
         self.write_log(names='DNN Params',
                        logs=text,
                        mode='')
-        
+
         start_time = datetime.datetime.now()
-        
+
         self.loss_record = []
         for iteration in range(self.args.iteration):
             elapsed_time = datetime.datetime.now() - start_time
@@ -179,10 +173,7 @@ class VBNNET(DNN):
 
             model_loss = self.train_epoch(iteration=iteration)
             self.loss_record.append(model_loss)
-            print("%d epoch: time: %s, loss = %s" % (
-                iteration + 1,
-                elapsed_time,
-                model_loss))
+            print(f"{iteration + 1} epoch: time: {elapsed_time}, loss = {model_loss}")
 
             if iteration % self.args.sample_interval == 0:
                 self.validate(sample=1, sample_id=iteration)
@@ -254,7 +245,7 @@ class VBNNET(DNN):
             img_name = img_name.split('/')[-1].split('.')[0]
             result_name = str(sample_id) + '_batch' + str(batch_id) + '_img' + img_name + '.png'
 
-            self.visualize(img,
+            data_helper.visualize_predict(img,
                            str(list(output_m)[:-1]),
                            const.SAMPLE_DIR / mode / result_name,
                            str(list(img_gt_m)[:-1]),
@@ -262,22 +253,28 @@ class VBNNET(DNN):
             )
 
     def predict(self):
+        """
+        Predict based on given weights and images
+        :return:
+        """
         # self.model = tf.keras.models.load_model(self.args.model_weights)
         self.args.batch_size = 1
         self.args.load_weights = 1
-        output_dir = Path(self.args.model_weights).parents[0] / 'test'
+        const.SAMPLE_DIR = Path(self.args.model_weights).parents[0] / 'sampled_img'
+        data_helper.check_folder(const.SAMPLE_DIR)
+        output_dir = const.SAMPLE_DIR / 'test'
         idx = 2
         while os.path.exists(output_dir):
-            print('Path already exists; renaming ...')
             ext = 'test ' + str(idx)
-            output_dir = Path(self.args.model_weights).parents[0] / ext
+            output_dir = const.SAMPLE_DIR / ext
             idx += 1
+            print('Path', output_dir, 'already exists; renaming...')
         data_helper.check_folder(output_dir)
         mode = 'test'
 
         print('Processing ', len(self.data.data_info['x' + mode]), 'Test images...')
 
-        for img_id, img_name in enumerate(self.data.data_info['x' + mode]):
+        for img_id, _ in enumerate(self.data.data_info['x' + mode]):
             self.validate(sample=1, sample_id=img_id, mode=mode)
 
         if self.args.extra_test is not None:
@@ -288,62 +285,26 @@ class VBNNET(DNN):
 
                 img = data_helper.imread(img_dir)
 
-                # prepro_img = self.preprocess_real(img)
-                prepro_img = img.copy()
+                # img = self.preprocess_real(img)
+                # img = img.copy()
                 meta_data = data_helper.metadata_read(img_dir)
 
-                predicted = self.model.predict(np.expand_dims(prepro_img, 0))[0]
+                predicted = self.model.predict(np.expand_dims(img, 0))[0]
                 predicted_geo = list(self.norm_geo2geo(predicted))[:-1]
                 err_m = geopy.distance.geodesic(predicted_geo, meta_data).m
                 print(err_m)
 
-                self.visualize(prepro_img,
+                data_helper.visualize_predict(img,
                                str(predicted_geo),
                                output_dir / img_name,
                                str(meta_data),
                                str(round(err_m, 3)) + ' m')
 
-    def visualize(self, img, predicted_info, output_dir, gt_info='NA', error='NA'):
-        plt.figure()
-        # figures equal to the number of z patches in columns
-
-        plt.title('original lat/long = ' \
-                  + gt_info \
-                  + '\nPredicted lat/long =' \
-                  + predicted_info)
-
-        plt.imshow(img)
-        plt.show()
-
-        plt.gca().axes.yaxis.set_ticklabels([])
-        plt.gca().axes.xaxis.set_ticklabels([])
-        plt.gca().axes.yaxis.set_ticks([])
-        plt.gca().axes.xaxis.set_ticks([])
-        plt.xlabel('\nError ='
-                   + error)
-
-        plt.savefig(output_dir)  # Save sample results
-        plt.close("all")  # Close figures to avoid memory leak
-
     def norm_geo2geo(self, data):
+        """
+            Convert normalized geolocation to actual geolocation
+        :param data:
+        :return:
+        """
         return data * (self.data.org_out_max - self.data.org_out_min) \
                 + self.data.org_out_min
-
-    def preprocess_real(self, real_img, blurr=5):
-        # print(np.shape(real_img))
-        real_img *= 255
-        final_img = np.ones_like(real_img)
-        for i in range(3):
-            img = np.asarray(real_img[:, :, i], dtype=np.uint8)
-
-            # img = cv2.cvtColor(real_img, cv2.COLOR_BGR2GRAY)
-            # img = cv2.threshold(img, 180, 225, cv2.THRESH_BINARY)
-            img = cv2.GaussianBlur(img, (blurr, blurr), 0)
-            _, img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            plt.imshow(img, cmap='gray')
-            plt.show()
-            final_img[:, :, i] = np.asarray(img, dtype=np.float32)
-        return final_img / 255
-
-
-
