@@ -1,0 +1,5 @@
+
+[MASTER]
+init-hook='import sys; sys.path.append("/home/sdjkhosh/miniconda3/envs/vbn_project")'
+disable = E0401, C0103, R0902, R0914, C0209, R0913
+
