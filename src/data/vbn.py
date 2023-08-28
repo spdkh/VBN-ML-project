@@ -34,7 +34,6 @@ class VBN(Data):
         self.org_out_min = None  # minimum of labels
         self.org_out_max = None  # maximum of labels
 
-
     def config(self):
         """
             configuration after init parent
