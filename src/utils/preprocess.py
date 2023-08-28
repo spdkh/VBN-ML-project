@@ -36,6 +36,9 @@ def preprocess(img, methods=[]):
 
 
 def img_quantize(img, n_colors=8):
+    """
+        Quantize image colors
+    """
     new_img = img.reshape((-1, 3))
 
     # convert to np.float32

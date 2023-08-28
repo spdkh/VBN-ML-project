@@ -70,8 +70,9 @@ def dir_pars_args():
     dir_parser.add_argument('--extra_test', type=str,
                             default='/home/sdjkhosh/Datasets/VisnavPNGFiles/DJI_images',
                         help='Address to the folder of images outside the test folder to be tested')
+    log_name = ـdatetime.datetime.now(pytz.timezone('US/Central')).strftime("%d-%m-%Y_time%H%M")
     dir_parser.add_argument('--log_name', type=str,
-                            default=datetime.datetime.now(pytz.timezone('US/Central')).strftime("%d-%m-%Y_time%H%M"),
+                            default=log_name,
                             help='Desired name for the log file instead of date and time.')
     return dir_parser
 

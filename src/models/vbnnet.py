@@ -70,8 +70,9 @@ class VBNNET(DNN):
                 batch_imgs = np.asarray(list(batch_imgs.values()))
 
                 batch_outputs \
-                    = self.data.data_info['ytrain'][2 * batch_id:
-                                                    2 * batch_id + self.args.batch_size]
+                    = self.data.data_info['ytrain'][self.args.batch_size * batch_id:
+                                                    self.args.batch_size * batch_id
+                                                    + self.args.batch_size]
 
                 train_datagen = ImageDataGenerator(
                     rescale=1. / 255,
@@ -153,23 +154,6 @@ class VBNNET(DNN):
         self.loss_record = []
         for iteration in range(self.args.iteration):
             elapsed_time = datetime.datetime.now() - start_time
-
-            # tf.keras.utils.image_dataset_from_directory(
-            #     self.data.data_info['xtrain'],
-            #     labels=self.data.data_info['ytrain'],
-            #     label_mode='categorical',
-            #     color_mode='rgba',
-            #     batch_size=self.args.batch_size,
-            #     image_size=self.data.input_dim,
-            #     shuffle=True,
-            #     seed=self.args.seed,
-            #     validation_split=None,
-            #     subset=None,
-            #     interpolation='bilinear',
-            #     follow_links=False,
-            #     crop_to_aspect_ratio=False,
-            #     **kwargs
-            # )
 
             model_loss = self.train_epoch(iteration=iteration)
             self.loss_record.append(model_loss)

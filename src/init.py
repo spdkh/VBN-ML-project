@@ -45,5 +45,7 @@ def run():
 
     dnn.build_model()
 
-    dnn.model.load_weights(args.model_weights, by_name=True, skip_mismatch=True)
+    if args.model_weights:
+        dnn.model.load_weights(args.model_weights, by_name=True, skip_mismatch=True)
+
     return dnn

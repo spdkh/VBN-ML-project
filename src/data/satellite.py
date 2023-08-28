@@ -33,7 +33,6 @@ class Satellite(VBN):
             print('Downloading satellite images...')
             self.gen_data()
 
-
     def config(self):
         """
             configuration after init parent
