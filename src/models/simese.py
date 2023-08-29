@@ -42,16 +42,17 @@ class Simese(VBNNET):
                 make_pairs(self.data_info['x' + mode],
                            self.data_info['y' + mode])
 
-        self.build_simese()
+        self.feature_extractor = None
+        self.build_model()
 
     def build_model(self):
         print("[INFO] building siamese network...")
         img_a = Input(shape=self.data.input_dim)
         img_b = Input(shape=self.data.input_dim)
-        feature_extractor = Model(self.model_input,
-                                  vgg16(self.model_input, 3))
-        feats_a = feature_extractor(img_a)
-        feats_b = feature_extractor(img_b)
+        self.feature_extractor = Model(self.model_input,
+                                       vgg16(self.model_input, 3))
+        feats_a = self.feature_extractor(img_a)
+        feats_b = self.feature_extractor(img_b)
 
         # finally, construct the siamese network
         distance = Lambda(euclidean_distance)([feats_a, feats_b])
@@ -84,14 +85,7 @@ class Simese(VBNNET):
         with tqdm(total=self.args.batch_iter) as pbar:
             # while batch_id != 0:
             for _ in range(self.args.batch_iter):
-                batch_pairs = \
-                    pair_batch_load(self.pairs['xtrain'],
-                                    self.args.batch_size,
-                                    batch_id)
-
-                batch_outputs \
-                    = self.pairs['ytrain'][self.args.batch_size * batch_id:
-                                           self.args.batch_size * batch_id + self.args.batch_size]
+                imgs, batch_output = self.load_batch(mode, batch_id)
 
                 # train_datagen = ImageDataGenerator(
                 #     rescale=1. / 255,
@@ -137,6 +131,60 @@ class Simese(VBNNET):
                 pbar.update()
 
         return np.mean(loss_record)
+
+    def validate(self, sample=0, sample_id=None, mode='val'):
+        """
+                :param sample: sample id
+                :return:
+                todo: review
+        """
+
+        batch_id = self.batch_iterator(mode)
+        err = [np.Inf]
+
+        metrics = {'Acc': [], 'BCE': []}
+
+        imgs, batch_output = self.load_batch(mode, batch_id)
+        outputs = self.model.predict(np.asarray(list(imgs.values())))
+
+        for i, output in enumerate(outputs):
+            metrics['Acc'].append(sklearn.metrics.accuracy_score(batch_output.iloc[i, :],
+                                                                 output))
+            metrics['BCE'].append(sklearn.metrics.log_loss(batch_output.iloc[i, :],
+                                                                 output))
+        if sample == 0:
+            self.feature_extractor.save_weights(const.WEIGHTS_DIR
+                                                / 'feater_extractor_latest.h5')
+            self.model.save_weights(const.WEIGHTS_DIR
+                                    / 'weights_gen_latest.h5')
+
+            if min(err) > np.mean(metrics['BCE']):
+                self.feature_extractor.save_weights(const.WEIGHTS_DIR
+                                                    / 'feater_extractor_best.h5')
+                self.model.save_weights(const.WEIGHTS_DIR
+                                        / 'weights_gen_best.h5')
+
+        else:
+            err.append(np.mean(metrics['BCE']))
+
+            self.write_log(mode + '_Accuracy', np.mean(metrics['Acc']),
+                           sample_id)
+            self.write_log(mode + '_Loss', np.mean(metrics['BCE']),
+                           sample_id)
+
+    def load_batch(self, mode, batch_id):
+        """
+
+        """
+        imgs = \
+            data_helper.pair_batch_load(self.pairs['x' + mode],
+                                        self.args.batch_size,
+                                        batch_id)
+
+        batch_output \
+            = self.pairs['y' + mode][batch_id * self.args.batch_size:
+                                     (batch_id + 1) * self.args.batch_size]
+        return imgs, batch_output
 
 
 def euclidean_distance(vectors):

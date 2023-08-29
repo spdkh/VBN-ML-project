@@ -63,17 +63,7 @@ class VBNNET(DNN):
         with tqdm(total=self.args.batch_iter) as pbar:
             # while batch_id != 0:
             for _ in range(self.args.batch_iter):
-                batch_imgs = \
-                    data_helper.img_batch_load(self.data.data_info['xtrain'],
-                                               self.args.batch_size,
-                                               batch_id)
-                batch_imgs = np.asarray(list(batch_imgs.values()))
-
-                batch_outputs \
-                    = self.data.data_info['ytrain'][self.args.batch_size * batch_id:
-                                                    self.args.batch_size * batch_id
-                                                    + self.args.batch_size]
-
+                imgs, batch_output = self.load_batch(mode, batch_id)
                 train_datagen = ImageDataGenerator(
                     rescale=1. / 255,
                     rotation_range=360,
@@ -184,16 +174,7 @@ class VBNNET(DNN):
         metrics = {'MAE': [],
                    'err_meter': []}
 
-        imgs = \
-            data_helper.img_batch_load(self.data.data_info['x' + mode],
-                                       self.args.batch_size,
-                                       batch_id)
-        # imgs = dict(keys=imgs.keys(), values=imgs)
-        # prepro_imgs = [self.preprocess_real(img) for img in list(imgs.values())]
-
-        batch_output \
-            = self.data.data_info['y' + mode][batch_id * self.args.batch_size:
-                                              (batch_id + 1) * self.args.batch_size]
+        imgs, batch_output = self.load_batch(mode, batch_id)
         # print(list(imgs.values()))
         outputs = self.model.predict(np.asarray(list(imgs.values())))
 
@@ -292,3 +273,23 @@ class VBNNET(DNN):
         """
         return data * (self.data.org_out_max - self.data.org_out_min) \
                 + self.data.org_out_min
+
+    def load_batch(self, mode, batch_id, augment=False):
+        """
+        
+        """
+        imgs = \
+            data_helper.img_batch_load(self.data.data_info['x' + mode],
+                                       self.args.batch_size,
+                                       batch_id)
+        # imgs = dict(keys=imgs.keys(), values=imgs)
+        # prepro_imgs = [self.preprocess_real(img) for img in list(imgs.values())]
+
+        batch_output \
+            = self.data.data_info['y' + mode][batch_id * self.args.batch_size:
+                                              (batch_id + 1) * self.args.batch_size]
+
+
+        
+        return imgs, batch_output
+        
