@@ -63,7 +63,8 @@ class VBNNET(DNN):
         with tqdm(total=self.args.batch_iter) as pbar:
             # while batch_id != 0:
             for _ in range(self.args.batch_iter):
-                imgs, batch_output = self.load_batch(mode, batch_id)
+                batch_imgs, batch_outputs = self.load_batch('train', batch_id)
+                batch_imgs = np.asarray(list(batch_imgs.values()))
                 train_datagen = ImageDataGenerator(
                     rescale=1. / 255,
                     rotation_range=360,
@@ -72,6 +73,7 @@ class VBNNET(DNN):
                     horizontal_flip=True,
                     fill_mode='nearest')
 
+                print(batch_imgs.shape, batch_outputs.shape)
                 batch_loss = self.model.train_on_batch(batch_imgs, batch_outputs)
                 loss_record.append(batch_loss)
 

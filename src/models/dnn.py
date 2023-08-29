@@ -24,6 +24,8 @@ class DNN(ABC):
         self.batch_id = {'train': 0, 'val': 0, 'test': 0}
 
         self.args = args
+        text_color = "\033[93m"
+        print(text_color)
         print('\nInitiated Parameters:\n', self.args)
         print('\nInit DNN Arch:', self.args.dnn_type)
 
