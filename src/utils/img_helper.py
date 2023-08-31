@@ -7,7 +7,7 @@ Most codes from https://github.com/carpedm20/DCGAN-tensorflow
 import matplotlib.pyplot as plt
 import numpy as np
 
-from data_helper import imread
+from src.utils.data_helper import imread
 
 
 def choose_random_images(n_imgs, imgs_paths):
