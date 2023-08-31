@@ -33,15 +33,16 @@ def run():
     if args.task is not None:
         module_name = '.'.join(['src.models',
                                 args.task,
-                                args.dnn_type])
+                                args.dnn_type.lower()])
     else:
         module_name = '.'.join(['src.models',
-                                args.dnn_type])
+                                args.dnn_type.lower()])
     print(module_name)
     dnn_module = __import__(module_name,
-                            fromlist=[args.dnn_type.upper()])
+                            fromlist=[args.dnn_type])
     dnn = getattr(dnn_module,
-                  args.dnn_type.upper())(args)
+                  args.dnn_type)(args)
+
 
     dnn.build_model()
 

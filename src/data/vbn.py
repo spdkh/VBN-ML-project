@@ -26,7 +26,7 @@ class VBN(Data):
 
         self.data_types = {'x': 'JPG2', 'y': 'MetaData2'}
         self.img_paths = data_helper.find_files(const.DATA_DIR / self.data_types['x'],
-                                           'jpg')
+                                                'jpg')
         self.img_paths.sort()
         self.network_out = None  # labels (lat, long, alt)
         self.org_out_min = None  # minimum of labels
@@ -60,13 +60,13 @@ class VBN(Data):
         print(meta_df)
 
         self.network_out = meta_df.loc['Platform_position_LatLongAlt', :]
-        self.network_out =\
+        self.network_out = \
             self.network_out.str.split(" ", expand=True).iloc[:, 1:-1].astype('float64')
         self.network_out.columns = ['Lat', 'Long', 'Alt']
         print('Network Outputs:')
         print(self.network_out)
         self.geo_calcs()
-        self.train_test_split()
+        self.my_train_test_split()
 
     def geo_calcs(self):
         """
@@ -101,11 +101,13 @@ class VBN(Data):
         img_area = land_area / len(self.network_out.index)
         print('Area covered by each image =', img_area, 'Km^2')
 
-    def train_test_split(self):
+    def my_train_test_split(self):
         """
         Splits data in train, test, validation sets
         """
-        y_normalized = norm_helper.min_max_norm(self.network_out)
+        y_normalized = np.asarray([norm_helper.min_max_norm(self.network_out.loc[:, col])
+                                   for col in self.network_out.columns]).T
+        y_normalized = pd.DataFrame(y_normalized, columns=self.network_out.columns)
         print('Normalized outputs (y_normalized):')
         print(y_normalized)
 
@@ -116,12 +118,14 @@ class VBN(Data):
         self.data_info['xtrain'], x_test, self.data_info['ytrain'], y_test \
             = train_test_split(self.img_paths, y_normalized,
                                test_size=0.2,
-                               random_state=self.args.seed)
-        self.data_info['xval'], self.data_info['xtest'],\
+                               random_state=self.args.seed,
+                               shuffle=True)
+        self.data_info['xval'], self.data_info['xtest'], \
         self.data_info['yval'], self.data_info['ytest'] \
             = train_test_split(x_test, y_test,
                                test_size=0.5,
-                               random_state=self.args.seed)
+                               random_state=self.args.seed,
+                               shuffle=True)
 
         sample_input_img = data_helper.imread(self.data_info['xtrain'][0])
         self.input_dim = np.shape(sample_input_img)
@@ -133,3 +137,12 @@ class VBN(Data):
         print('Y_train size:', np.shape(self.data_info['ytrain']))
         print('Y_val size:', np.shape(self.data_info['yval']))
         print('Y_test size:', np.shape(self.data_info['ytest']))
+
+    def norm_geo2geo(self, data):
+        """
+            Convert normalized geolocation to actual geolocation
+        :param data:
+        :return:
+        """
+        return data * (self.org_out_max - self.org_out_min) \
+               + self.org_out_min

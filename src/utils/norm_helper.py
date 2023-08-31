@@ -43,4 +43,5 @@ def min_max_norm(x_in):
     :return: output
     """
     output = (x_in - np.min(x_in)) / (np.max(x_in) - np.min(x_in))
+    output = np.nan_to_num(output, nan=1)
     return output

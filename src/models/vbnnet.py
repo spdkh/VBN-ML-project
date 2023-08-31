@@ -185,8 +185,8 @@ class VBNNET(DNN):
 
             img_gt = np.asarray(batch_output.iloc[i, :])
 
-            output_m = self.norm_geo2geo(output)
-            img_gt_m = self.norm_geo2geo(img_gt)
+            output_m = self.data.norm_geo2geo(output)
+            img_gt_m = self.data.norm_geo2geo(img_gt)
 
             metrics['MAE'].append(np.mean(np.abs(output - img_gt)))
             metrics['err_meter'].append(
@@ -266,15 +266,6 @@ class VBNNET(DNN):
                                output_dir / img_name,
                                str(meta_data),
                                str(round(err_m, 3)) + ' m')
-
-    def norm_geo2geo(self, data):
-        """
-            Convert normalized geolocation to actual geolocation
-        :param data:
-        :return:
-        """
-        return data * (self.data.org_out_max - self.data.org_out_min) \
-                + self.data.org_out_min
 
     def load_batch(self, mode, batch_id, augment=False):
         """

@@ -94,15 +94,10 @@ def dnn_pars_args(iterations=ITER):
     dnn_parser.add_argument('--task', type=str, default=None,
                         choices=[None, 'super_resolution'],
                         help='What type of task are you trying to solve?')
-    dnn_parser.add_argument('--dnn_type', type=str, default='vbnnet',
-                        choices=['cagan',
-                                 'srgan',
-                                 'ucagan',
-                                 'cgan',
-                                 'srgan',
-                                 'ugan',
-                                 'urcan',
-                                 'vbnnet'],
+    dnn_parser.add_argument('--dnn_type', type=str, default='Simese',
+                        choices=['DNN',
+                                 'Simese',
+                                 'VBNNET'],
                         help='The type of DNN')
 
     dnn_parser.add_argument("--load_weights", type=int, default=0,
@@ -114,7 +109,7 @@ def dnn_pars_args(iterations=ITER):
     dnn_parser.add_argument("--opt", type=str, default="adam")
 
     dnn_parser.add_argument('--batch_size', type=int, default=8,
-                        choices=range(1, 16),
+                        choices=range(1, 128),
                         help='The size of batch')
     dnn_parser.add_argument('--iteration', type=int,
                         default=iterations, help='The number of epochs to run')
@@ -122,7 +117,7 @@ def dnn_pars_args(iterations=ITER):
                             default=1, help='The number of iterations to load from the batch')
     dnn_parser.add_argument('--n_augment', type=int,
                             default=1, help='The number of augmented images for each batch')
-    dnn_parser.add_argument("--seed", type=int, default=12345)
+    dnn_parser.add_argument("--seed", type=int, default=1357)
 
     return dnn_parser
 

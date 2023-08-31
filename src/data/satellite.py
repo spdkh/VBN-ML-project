@@ -60,7 +60,7 @@ class Satellite(VBN):
         print('Network Outputs:')
         print(self.network_out)
         self.geo_calcs()
-        self.train_test_split()
+        self.my_train_test_split()
 
     def gen_data(self):
         """

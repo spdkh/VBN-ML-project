@@ -12,11 +12,14 @@ import geopy
 from tqdm import tqdm
 import numpy as np
 import visualkeras
+import sklearn
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Lambda, Dense
+import tensorflow.keras.backend as K
 
 from src.models.vbnnet import VBNNET
-from src.utils import const, data_helper, norm_helper
+from src.utils import const, data_helper, norm_helper, geo_helper
 from src.utils.architectures.transfer_learning import vgg16
 from src.utils.config import dnn_pars_args, dir_pars_args
 
@@ -39,9 +42,8 @@ class Simese(VBNNET):
         self.pairs = {}
         for mode in ['train', 'val', 'test']:
             self.pairs['x' + mode], self.pairs['y' + mode] = \
-                make_pairs(self.data_info['x' + mode],
-                           self.data_info['y' + mode])
-
+                self.make_pairs(self.data.data_info['x' + mode],
+                                np.asarray(self.data.data_info['y' + mode]))
         self.feature_extractor = None
         self.build_model()
 
@@ -59,6 +61,7 @@ class Simese(VBNNET):
         outputs = Dense(1, activation="sigmoid")(distance)
         self.model = Model(inputs=[img_a, img_b],
                            outputs=outputs)
+
         # compile the model
         print("[INFO] compiling model...")
         self.model.compile(loss="binary_crossentropy",
@@ -85,7 +88,7 @@ class Simese(VBNNET):
         with tqdm(total=self.args.batch_iter) as pbar:
             # while batch_id != 0:
             for _ in range(self.args.batch_iter):
-                imgs, batch_output = self.load_batch(mode, batch_id)
+                batch_pairs, batch_outputs = self.load_batch('train', batch_id)
 
                 # train_datagen = ImageDataGenerator(
                 #     rescale=1. / 255,
@@ -95,7 +98,10 @@ class Simese(VBNNET):
                 #     horizontal_flip=True,
                 #     fill_mode='nearest')
 
-                batch_loss = self.model.train_on_batch(batch_pairs, batch_outputs)
+                batch_loss = self.model.train_on_batch([batch_pairs[0, :, :, :, :],
+                                                        batch_pairs[1, :, :, :, :]],
+                                                        batch_outputs)
+
                 loss_record.append(batch_loss)
 
                 # print('Train with augmented data:')
@@ -145,13 +151,17 @@ class Simese(VBNNET):
         metrics = {'Acc': [], 'BCE': []}
 
         imgs, batch_output = self.load_batch(mode, batch_id)
-        outputs = self.model.predict(np.asarray(list(imgs.values())))
+        outputs = self.model.predict([imgs[0, :, :, :, :],
+                                     imgs[1, :, :, :, :]])
 
-        for i, output in enumerate(outputs):
-            metrics['Acc'].append(sklearn.metrics.accuracy_score(batch_output.iloc[i, :],
-                                                                 output))
-            metrics['BCE'].append(sklearn.metrics.log_loss(batch_output.iloc[i, :],
-                                                                 output))
+        thr = 0.5
+        outputs = np.where(outputs > thr, 1, 0)
+        # for i, output in enumerate(outputs):
+        # print(batch_output, outputs)
+        metrics['Acc'].append(sklearn.metrics.accuracy_score(batch_output,
+                                                             outputs))
+        metrics['BCE'].append(sklearn.metrics.log_loss(batch_output,
+                                                       outputs))
         if sample == 0:
             self.feature_extractor.save_weights(const.WEIGHTS_DIR
                                                 / 'feater_extractor_latest.h5')
@@ -177,14 +187,60 @@ class Simese(VBNNET):
 
         """
         imgs = \
-            data_helper.pair_batch_load(self.pairs['x' + mode],
+            pair_batch_load(self.pairs['x' + mode],
                                         self.args.batch_size,
                                         batch_id)
+        imgs = np.squeeze(np.asarray(imgs))
+        imgs = imgs.transpose((1, 0, 2, 3, 4))
 
         batch_output \
             = self.pairs['y' + mode][batch_id * self.args.batch_size:
                                      (batch_id + 1) * self.args.batch_size]
         return imgs, batch_output
+
+    def make_pairs(self, images, labels):
+        # initialize two empty lists to hold the (image, image) pairs and
+        # labels to indicate if a pair is positive or negative
+        pair_images = []
+        pair_labels = []
+
+        # loop over all images
+        for idx_a in range(len(images)):
+            # grab the current image and label belonging to the current iteration
+            cur_img = images[idx_a]
+            label = self.data.norm_geo2geo(labels[idx_a])
+
+            # randomly pick an image that belongs to the *same* class label
+            idx_b = np.random.choice(range(len(images)))
+            label_b = self.data.norm_geo2geo(labels[idx_b])
+
+            if geo_helper.overlapped(label, label_b):
+                pos_img = images[idx_b]
+                while geo_helper.overlapped(label, label_b):
+                    idx_b = np.random.choice(range(len(images)))
+                    label_b = self.data.norm_geo2geo(labels[idx_b])
+                # grab the indices for each of the class labels *not* equal to
+                # the current label and randomly pick an image corresponding
+                # to a label *not* equal to the current label
+                neg_img = images[idx_b]
+            else:
+                neg_img = images[idx_b]
+                while not geo_helper.overlapped(label, label_b):
+                    idx_b = np.random.choice(range(len(images)))
+                    label_b = self.data.norm_geo2geo(labels[idx_b])
+                # grab the indices for each of the class labels equal to
+                # the current label and randomly pick an image corresponding
+                # to a label equal to the current label
+                pos_img = images[idx_b]
+            # prepare a positive pair and update the images and labels
+            # lists, respectively
+            pair_images.append([cur_img, pos_img])
+            pair_labels.append([1])
+            # prepare a negative pair of images and update our lists
+            pair_images.append([cur_img, neg_img])
+            pair_labels.append([0])
+        # return a 2-tuple of our image pairs and labels
+        return np.array(pair_images), np.array(pair_labels)
 
 
 def euclidean_distance(vectors):
@@ -196,49 +252,6 @@ def euclidean_distance(vectors):
                         keepdims=True)
     # return the euclidean distance between the vectors
     return K.sqrt(K.maximum(sum_squared, K.epsilon()))
-
-
-def make_pairs(images, labels):
-    # initialize two empty lists to hold the (image, image) pairs and
-    # labels to indicate if a pair is positive or negative
-    pair_images = []
-    pair_labels = []
-
-    # loop over all images
-    for idx_a in range(len(images)):
-        # grab the current image and label belonging to the current iteration
-        cur_img = images[idx_a]
-        label = labels[idx_a]
-        # randomly pick an image that belongs to the *same* class label
-        idx_b = np.random.choice(range(len(images)))
-        label_b = labels[idx_b]
-        if overlapped(label, label_b):
-            pos_img = images[idx_b]
-            while overlapped(label, label_b):
-                idx_b = np.random.choice(range(len(images)))
-                label_b = labels[idx_b]
-            # grab the indices for each of the class labels *not* equal to
-            # the current label and randomly pick an image corresponding
-            # to a label *not* equal to the current label
-            neg_img = images[idx_b]
-        else:
-            neg_img = images[idx_b]
-            while not overlapped(label, label_b):
-                idx_b = np.random.choice(range(len(images)))
-                label_b = labels[idx_b]
-            # grab the indices for each of the class labels equal to
-            # the current label and randomly pick an image corresponding
-            # to a label equal to the current label
-            pos_img = images[idx_b]
-        # prepare a positive pair and update the images and labels
-        # lists, respectively
-        pair_images.append([cur_img, pos_img])
-        pair_labels.append([1])
-        # prepare a negative pair of images and update our lists
-        pair_images.append([cur_img, neg_img])
-        pair_labels.append([0])
-    # return a 2-tuple of our image pairs and labels
-    return np.array(pair_images), np.array(pair_labels)
 
 
 def pair_batch_load(pairs, batch_size, iteration):
@@ -263,10 +276,11 @@ def pair_batch_load(pairs, batch_size, iteration):
         """
     iteration = iteration * batch_size
     image_batch = []
-    for i in range(iteration, batch_size + iteration):
-        pair = pairs[i]
+    for i in range(batch_size):
+        pair = pairs[i + iteration]
         image_batch.append([])
+        # print('Empty batch:', image_batch[i])
         for j in range(2):
-            img = imread(pair[j])
+            img = data_helper.imread(pair[j])
             image_batch[i].append(img)
     return image_batch
