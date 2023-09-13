@@ -24,16 +24,16 @@ class DNN(ABC):
         self.batch_id = {'train': 0, 'val': 0, 'test': 0}
 
         self.args = args
-        text_color = "\033[93m"
-        print(text_color)
-        print('\nInitiated Parameters:\n', self.args)
-        print('\nInit DNN Arch:', self.args.dnn_type)
+        # text_color = "\033[0m"
+        # print(text_color)
+        print('\n[DNN] Initiated Parameters:\n', self.args)
+        print('\n[DNN] Init DNN Arch:', self.args.dnn_type)
 
         module_name = '.'.join(['src.data',
                                 args.dataset.lower()])
         dataset_module = __import__(module_name,
                                     fromlist=[args.dataset])
-        print('Dataset:', module_name)
+        print('[DNN] Dataset:', module_name)
         self.data = getattr(dataset_module,
                             args.dataset)(self.args)
         self.data.config()

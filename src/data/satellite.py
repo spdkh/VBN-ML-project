@@ -30,7 +30,7 @@ class Satellite(VBN):
                                                 'jpg')
         self.img_paths.sort()
         if not data_helper.check_folder(const.DATA_DIR):
-            print('Downloading satellite images...')
+            print('[Satellite] Downloading satellite images...')
             self.gen_data()
 
     def config(self):
@@ -50,6 +50,7 @@ class Satellite(VBN):
             df_i = pd.Series(map(float, os.path.basename(path).split('.jpg')[0].split('_')))
             meta_dfs.append(df_i)
 
+        print(meta_dfs)
         meta_df = pd.concat(meta_dfs, axis=1).transpose()
         meta_df.columns = ['columns', 'row', 'Lat', 'Long', 'Alt']
 
@@ -67,22 +68,34 @@ class Satellite(VBN):
             Generate Satellite data from a given big picture map
         :return:
         """
-        center_lat = self.args.coords[0]
-        center_lon = self.args.coords[1]
-        map_zoom = int(self.args.coords[2])
+        top_left = self.args.coords[0], self.args.coords[1]
+        buttom_right = self.args.coords[2], self.args.coords[3]
+
+        map_ratio = abs(top_left[0] - buttom_right[0]) / abs(top_left[1] - buttom_right[1])
+        map_w = 400
+        map_h = int(map_w * map_ratio)
+        map_size = [map_w, map_h]
+        center_lat = (top_left[0] + buttom_right[0]) / 2
+        center_lon = (top_left[1] + buttom_right[1]) / 2
+
+        map_zoom = int(self.args.coords[-1])
 
         # best zooms can be from 15 to 19
         map_data = geo_helper.get_static_map_image(center_lat,
                                                    center_lon,
-                                                   zoom=map_zoom)
+                                                   zoom=map_zoom,
+                                                   size=map_size)
 
         top_left_lat, top_left_lon, bottom_right_lat, bottom_right_lon = \
-            geo_helper.calculate_bounding_box(center_lat,
-                                              center_lon,
-                                              map_zoom)
-        print("Center (Latitude, Longitude):", center_lat, center_lon)
-        print("Top Left (Latitude, Longitude):", top_left_lat, top_left_lon)
-        print("Bottom Right (Latitude, Longitude):", bottom_right_lat, bottom_right_lon)
+            geo_helper.calculate_bounding_box((center_lat,
+                                              center_lon),
+                                              map_zoom,
+                                              map_size=map_size)
+
+        print("[INFO]")
+        print("\tCenter (Latitude, Longitude):", center_lat, center_lon)
+        print("\tTop Left (Latitude, Longitude):", top_left_lat, top_left_lon)
+        print("\tBottom Right (Latitude, Longitude):", bottom_right_lat, bottom_right_lon)
 
         img = Image.open(BytesIO(map_data))
         plt.imshow(img)
@@ -97,11 +110,18 @@ class Satellite(VBN):
         plt.xlabel("Longitude")
         plt.ylabel("Latitude")
         plt.title("Satellite Image")
-        plt.show()
+        # plt.show()
         plt.savefig(const.DATA_DIR / "map.jpg")  # Save sample results
         plt.close("all")  # Close figures to avoid memory leak
 
         geo_helper.gen_raster_from_map((top_left_lat, top_left_lon),
-                                 (bottom_right_lat, bottom_right_lon),
-                                 raster_zoom=18,
-                                 overlap=60)
+                                       (bottom_right_lat, bottom_right_lon),
+                                       (400, 400),
+                                       raster_zoom=18,
+                                       overlap=60)
+
+        geo_helper.gen_raster_from_map((top_left_lat, top_left_lon),
+                                       (bottom_right_lat, bottom_right_lon),
+                                       (400, 400),
+                                       raster_zoom=19,
+                                       overlap=60)

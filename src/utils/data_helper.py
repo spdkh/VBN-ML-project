@@ -25,10 +25,11 @@ def check_folder(log_dir):
             log_dir: str
                 directory to check
     """
+    print('\n[DATA Helper] Checking Folder')
     if os.path.exists(log_dir):
-        print(log_dir, 'Folder Exists.')
+        print('\t', log_dir, 'Folder Exists.')
         return True
-    print('Creating Folder', log_dir)
+    print('\tCreating Folder', log_dir)
     os.makedirs(log_dir)
     return False
 

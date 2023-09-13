@@ -19,6 +19,8 @@ from src.models.dnn import DNN
 from src.utils import const, data_helper, norm_helper
 from src.utils.architectures.transfer_learning import vgg16
 from src.utils.config import dnn_pars_args, dir_pars_args
+from src.utils.architectures import basic_arch
+
 
 
 class VBNNET(DNN):
@@ -33,9 +35,11 @@ class VBNNET(DNN):
                 args: argparse object
         """
         DNN.__init__(self, args)
-        self.model_output = vgg16(self.model_input, 3)
-        print('model input:', self.model_input)
-        print('model output:', self.model_output)
+        vgg_o = vgg16(self.model_input, 4)        
+        self.model_output = basic_arch.simple_cnn(vgg_o, 3, [(4, 2)])
+
+        print('[VBNNET] model input:', self.model_input)
+        print('[VBNNET] model output:', self.model_output)
         self.model = Model(self.model_input,
                            self.model_output)
 
@@ -43,7 +47,8 @@ class VBNNET(DNN):
         self.model.compile(loss='mean_absolute_error',
                            optimizer='adam',
                            metrics=['mean_absolute_error'])
-        print(self.model.summary())
+        print('[VBNNET] Model Summary: \n', self.model.summary())
+        print()
         # tf.keras.utils.plot_model(self.model, to_file='Model.png',
         # show_shapes=True, dpi=64, rankdir='LR')
         # write to disk
@@ -66,14 +71,13 @@ class VBNNET(DNN):
                 batch_imgs, batch_outputs = self.load_batch('train', batch_id)
                 batch_imgs = np.asarray(list(batch_imgs.values()))
                 train_datagen = ImageDataGenerator(
-                    rescale=1. / 255,
                     rotation_range=360,
                     width_shift_range=0.6,
                     height_shift_range=0.6,
                     horizontal_flip=True,
                     fill_mode='nearest')
 
-                print(batch_imgs.shape, batch_outputs.shape)
+                # print(batch_imgs.shape, batch_outputs.shape)
                 batch_loss = self.model.train_on_batch(batch_imgs, batch_outputs)
                 loss_record.append(batch_loss)
 
@@ -98,8 +102,8 @@ class VBNNET(DNN):
                 elapsed_time = datetime.datetime.now() - start_time
                 batch_loss = np.mean(loss_record)
                 if batch_log:
-                    print(f"{batch_id} batch iteration: time: "
-                          f"{elapsed_time}, batch_loss = {batch_loss}")
+                    print(batch_id, 'batch iteration: time:',
+                          elapsed_time, 'batch_loss = ',batch_loss)
 
                 self.write_log(
                     'full train loss',
@@ -115,7 +119,7 @@ class VBNNET(DNN):
         """
             iterate over epochs
         """
-        print('Training...')
+        print('[VBNNET] Training...')
 
         text = ''
         index = 0
@@ -129,7 +133,7 @@ class VBNNET(DNN):
                     text += "\n"
 
         text = text.replace(' ', '.')
-        print(text)
+        # print(text)
         data_helper.check_folder(const.WEIGHTS_DIR)
         data_helper.check_folder(const.SAMPLE_DIR)
         data_helper.check_folder(const.SAMPLE_DIR / 'val')
@@ -149,7 +153,7 @@ class VBNNET(DNN):
 
             model_loss = self.train_epoch(iteration=iteration)
             self.loss_record.append(model_loss)
-            print(f"{iteration + 1} epoch: time: {elapsed_time}, loss = {model_loss}")
+            print(iteration + 1, 'epoch: time:', elapsed_time, 'loss =', model_loss)
 
             if iteration % self.args.sample_interval == 0:
                 self.validate(sample=1, sample_id=iteration)
@@ -259,7 +263,7 @@ class VBNNET(DNN):
                 predicted = self.model.predict(np.expand_dims(img, 0))[0]
                 predicted_geo = list(self.norm_geo2geo(predicted))[:-1]
                 err_m = geopy.distance.geodesic(predicted_geo, meta_data).m
-                print(err_m)
+                # print(err_m)
 
                 data_helper.visualize_predict(img,
                                str(predicted_geo),

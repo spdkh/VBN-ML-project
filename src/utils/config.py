@@ -1,4 +1,5 @@
 """
+|
     author: Parisa Daj
     date: May 10, 2022
     parsing and configuration
@@ -8,7 +9,6 @@ import argparse
 
 import datetime
 import pytz
-
 
 
 def check_args(args):
@@ -24,7 +24,7 @@ def check_args(args):
     return args
 
 
-ITER = 300
+ITER = 3000
 
 
 def parse_args():
@@ -47,7 +47,8 @@ def parse_args():
                         )
     parser.add_argument("--validate_interval", type=int, default=1)
     parser.add_argument("--validate_num", type=int, default=1)
-    parser.add_argument("--coords", type=float, nargs='+', default=[35.1270, -89.8118, 15],
+    parser.add_argument("--coords", type=float, nargs='+',
+                        default=[35.133520,-89.820083,35.124821, -89.793135, 15],
                         help='Center latitude, longitude, longitude, zoom')
 
     return check_args(parser.parse_args())
@@ -60,7 +61,7 @@ def dir_pars_args():
     """
     dir_parser = argparse.ArgumentParser(add_help=False)
     dir_parser.add_argument("--data_dir", type=str,
-                            default="/home/sdjkhosh/Datasets/Satellite",
+                            default="/home/sdjkhosh/Datasets/Agricenter_Sat",
                             help='The directory of the data')
     dir_parser.add_argument('--result_dir', type=str, default='results',
                             help='Directory name to save the generated images')
@@ -69,7 +70,7 @@ def dir_pars_args():
                                 "results/Satellite_vbnnet_24-08-2023_time1647/weights_gen_best.h5"))
     dir_parser.add_argument('--extra_test', type=str,
                             default='/home/sdjkhosh/Datasets/VisnavPNGFiles/DJI_images',
-                        help='Address to the folder of images outside the test folder to be tested')
+                            help='Address to the folder of images outside the test folder to be tested')
     log_name = datetime.datetime.now(pytz.timezone('US/Central')).strftime("%d-%m-%Y_time%H%M")
     dir_parser.add_argument('--log_name', type=str,
                             default=log_name,
@@ -85,38 +86,37 @@ def dnn_pars_args(iterations=ITER):
     """
     dnn_parser = argparse.ArgumentParser(add_help=False)
     dnn_parser.add_argument("--norm", type=str, default='min_max',
-                        help='Image normalization Method.',
-                        choices=['max',
-                                 'min_max',
-                                 'prctile'])
+                            help='Image normalization Method.',
+                            choices=['max',
+                                     'min_max',
+                                     'prctile'])
     dnn_parser.add_argument('--dataset', type=str, default='Satellite',
-                        choices=['FixedCell', 'FairSIM', 'VBN'])
+                            choices=['FixedCell', 'FairSIM', 'VBN'])
     dnn_parser.add_argument('--task', type=str, default=None,
-                        choices=[None, 'super_resolution'],
-                        help='What type of task are you trying to solve?')
+                            choices=[None, 'super_resolution'],
+                            help='What type of task are you trying to solve?')
     dnn_parser.add_argument('--dnn_type', type=str, default='Simese',
-                        choices=['DNN',
-                                 'Simese',
-                                 'VBNNET'],
-                        help='The type of DNN')
+                            choices=['DNN',
+                                     'Simese',
+                                     'VBNNET'],
+                            help='The type of DNN')
 
     dnn_parser.add_argument("--load_weights", type=int, default=0,
-                        choices=range(2))
+                            choices=range(2))
 
     # Generator Setup
-    dnn_parser.add_argument("--start_lr", type=float, default=1e-4)
+    dnn_parser.add_argument("--start_lr", type=float, default=1e-3)
     dnn_parser.add_argument("--lr_decay_factor", type=float, default=0.5)
     dnn_parser.add_argument("--opt", type=str, default="adam")
-
-    dnn_parser.add_argument('--batch_size', type=int, default=8,
-                        choices=range(1, 128),
-                        help='The size of batch')
+    dnn_parser.add_argument('--batch_size', type=int, default=32,
+                            choices=range(1, 128),
+                            help='The size of batch')
     dnn_parser.add_argument('--iteration', type=int,
-                        default=iterations, help='The number of epochs to run')
+                            default=iterations, help='The number of epochs to run')
     dnn_parser.add_argument('--batch_iter', type=int,
-                            default=1, help='The number of iterations to load from the batch')
+                            default=50, help='The number of iterations to load from the batch')
     dnn_parser.add_argument('--n_augment', type=int,
-                            default=1, help='The number of augmented images for each batch')
+                            default=10, help='The number of augmented images for each batch')
     dnn_parser.add_argument("--seed", type=int, default=1357)
 
     return dnn_parser

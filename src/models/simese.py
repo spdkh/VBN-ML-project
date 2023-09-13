@@ -5,6 +5,7 @@
     date: Aug 2023
 """
 import os
+import psutil
 import datetime
 from pathlib import Path
 
@@ -20,6 +21,7 @@ import tensorflow.keras.backend as K
 
 from src.models.vbnnet import VBNNET
 from src.utils import const, data_helper, norm_helper, geo_helper
+from src.utils.architectures import transfer_learning, feature_extraction
 from src.utils.architectures.transfer_learning import vgg16
 from src.utils.config import dnn_pars_args, dir_pars_args
 
@@ -38,9 +40,10 @@ class Simese(VBNNET):
         VBNNET.__init__(self, args)
 
         # build the positive and negative image pairs
-        print("[INFO] preparing positive and negative pairs...")
+        print("[Simese] preparing positive and negative pairs...")
         self.pairs = {}
         for mode in ['train', 'val', 'test']:
+            print('\t', mode, 'pairs...')
             self.pairs['x' + mode], self.pairs['y' + mode] = \
                 self.make_pairs(self.data.data_info['x' + mode],
                                 np.asarray(self.data.data_info['y' + mode]))
@@ -48,11 +51,13 @@ class Simese(VBNNET):
         self.build_model()
 
     def build_model(self):
-        print("[INFO] building siamese network...")
+        print("[Simese] building siamese network...")
         img_a = Input(shape=self.data.input_dim)
         img_b = Input(shape=self.data.input_dim)
+        vgg_o = vgg16(self.model_input, 4)
+        self.model_output = feature_extraction.build_siamese_model(vgg_o)
         self.feature_extractor = Model(self.model_input,
-                                       vgg16(self.model_input, 3))
+                                       self.model_output)
         feats_a = self.feature_extractor(img_a)
         feats_b = self.feature_extractor(img_b)
 
@@ -63,12 +68,12 @@ class Simese(VBNNET):
                            outputs=outputs)
 
         # compile the model
-        print("[INFO] compiling model...")
+        print("[Simese] compiling model...")
         self.model.compile(loss="binary_crossentropy",
                            optimizer="adam",
                            metrics=["accuracy"])
 
-        print(self.model.summary())
+        print('[Simese] Model Summary:\n', self.model.summary())
         # tf.keras.utils.plot_model(self.model, to_file='Model.png',
         # show_shapes=True, dpi=64, rankdir='LR')
         # write to disk
@@ -85,18 +90,24 @@ class Simese(VBNNET):
         self.batch_id['train'] = 1
         batch_id = 1
         loss_record = []
+
+        process = psutil.Process(os.getpid())
+        memory_usage = process.memory_info().rss / (1024 ** 3)  # Memory usage in GB
+        print(f"['Simese']\tMemory Usage: {memory_usage} GB")
+
         with tqdm(total=self.args.batch_iter) as pbar:
             # while batch_id != 0:
             for _ in range(self.args.batch_iter):
                 batch_pairs, batch_outputs = self.load_batch('train', batch_id)
 
-                # train_datagen = ImageDataGenerator(
-                #     rescale=1. / 255,
-                #     rotation_range=360,
-                #     width_shift_range=0.6,
-                #     height_shift_range=0.6,
-                #     horizontal_flip=True,
-                #     fill_mode='nearest')
+                train_datagen = ImageDataGenerator(
+                    rotation_range=360,
+                    zoom_range=.5,
+                    width_shift_range=0,
+                    height_shift_range=0,
+                    horizontal_flip=True,
+                    fill_mode='nearest',
+                    preprocessing_function=norm_helper.min_max_norm)
 
                 batch_loss = self.model.train_on_batch([batch_pairs[0, :, :, :, :],
                                                         batch_pairs[1, :, :, :, :]],
@@ -105,8 +116,8 @@ class Simese(VBNNET):
                 loss_record.append(batch_loss)
 
                 # print('Train with augmented data:')
-                # for i, (img, batch_output) in enumerate(train_datagen.flow(
-                #         batch_imgs,
+                # for i, (img, batch_pair) in enumerate(train_datagen.flow(
+                #         batch_pairs[1, :, :, :, :],
                 #         y=batch_outputs,
                 #         batch_size=self.args.batch_size,
                 #         shuffle=True,
@@ -116,17 +127,19 @@ class Simese(VBNNET):
                 #     # output = self.model.predict(img)
                 #     # print(i, img.shape, batch_output.shape)
                 #     # output = norm_helper.min_max_norm(output)
-                #     batch_loss = self.model.train_on_batch(img, batch_output)
+                #     batch_loss = self.model.train_on_batch([batch_pairs[0, :, :, :, :],
+                #                                         batch_pair],
+                #                                         batch_outputs)
                 #     loss_record.append(batch_loss)
-                #
+                
                 #     if i > self.args.n_augment:
                 #         break
 
                 elapsed_time = datetime.datetime.now() - start_time
                 batch_loss = np.mean(loss_record)
                 if batch_log:
-                    print(f"{batch_id} batch iteration: time: "
-                          f"{elapsed_time}, batch_loss = {batch_loss}")
+                    print(batch_id, 'batch iteration: time:',
+                          elapsed_time, 'batch_loss = ', batch_loss)
 
                 self.write_log(
                     'full train loss',
@@ -205,40 +218,44 @@ class Simese(VBNNET):
         pair_labels = []
 
         # loop over all images
-        for idx_a in range(len(images)):
-            # grab the current image and label belonging to the current iteration
-            cur_img = images[idx_a]
-            label = self.data.norm_geo2geo(labels[idx_a])
+        with tqdm(total=len(images)) as pbar:
 
-            # randomly pick an image that belongs to the *same* class label
-            idx_b = np.random.choice(range(len(images)))
-            label_b = self.data.norm_geo2geo(labels[idx_b])
+            for idx_a in range(len(images)):
+                # grab the current image and label belonging to the current iteration
+                cur_img = images[idx_a]
+                label = self.data.norm_geo2geo(labels[idx_a])
 
-            if geo_helper.overlapped(label, label_b):
-                pos_img = images[idx_b]
-                while geo_helper.overlapped(label, label_b):
-                    idx_b = np.random.choice(range(len(images)))
-                    label_b = self.data.norm_geo2geo(labels[idx_b])
-                # grab the indices for each of the class labels *not* equal to
-                # the current label and randomly pick an image corresponding
-                # to a label *not* equal to the current label
-                neg_img = images[idx_b]
-            else:
-                neg_img = images[idx_b]
-                while not geo_helper.overlapped(label, label_b):
-                    idx_b = np.random.choice(range(len(images)))
-                    label_b = self.data.norm_geo2geo(labels[idx_b])
-                # grab the indices for each of the class labels equal to
-                # the current label and randomly pick an image corresponding
-                # to a label equal to the current label
-                pos_img = images[idx_b]
-            # prepare a positive pair and update the images and labels
-            # lists, respectively
-            pair_images.append([cur_img, pos_img])
-            pair_labels.append([1])
-            # prepare a negative pair of images and update our lists
-            pair_images.append([cur_img, neg_img])
-            pair_labels.append([0])
+                # randomly pick an image that belongs to the *same* class label
+                idx_b = np.random.choice(range(len(images)))
+                label_b = self.data.norm_geo2geo(labels[idx_b])
+                # print(geo_helper.overlapped(label, label, (400, 400)))
+                # quit()
+                if geo_helper.overlapped(label, label_b, (400, 400)):
+                    pos_img = images[idx_b]
+                    while geo_helper.overlapped(label, label_b, (400, 400)):
+                        idx_b = np.random.choice(range(len(images)))
+                        label_b = self.data.norm_geo2geo(labels[idx_b])
+                    # grab the indices for each of the class labels *not* equal to
+                    # the current label and randomly pick an image corresponding
+                    # to a label *not* equal to the current label
+                    neg_img = images[idx_b]
+                else:
+                    neg_img = images[idx_b]
+                    while not geo_helper.overlapped(label, label_b, (400, 400)):
+                        idx_b = np.random.choice(range(len(images)))
+                        label_b = self.data.norm_geo2geo(labels[idx_b])
+                    # grab the indices for each of the class labels equal to
+                    # the current label and randomly pick an image corresponding
+                    # to a label equal to the current label
+                    pos_img = images[idx_b]
+                # prepare a positive pair and update the images and labels
+                # lists, respectively
+                pair_images.append([cur_img, pos_img])
+                pair_labels.append([1])
+                # prepare a negative pair of images and update our lists
+                pair_images.append([cur_img, neg_img])
+                pair_labels.append([0])
+                pbar.update()
         # return a 2-tuple of our image pairs and labels
         return np.array(pair_images), np.array(pair_labels)
 

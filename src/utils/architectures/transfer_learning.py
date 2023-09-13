@@ -10,7 +10,7 @@ from keras.applications import VGG16
 from src.utils.architectures import basic_arch
 
 
-def vgg16(net_input, n_classes):
+def vgg16(net_input, k=6):
     """
         VGG16 transfer learning
     :param net_input:
@@ -21,8 +21,8 @@ def vgg16(net_input, n_classes):
 
     vgg_conv = VGG16(weights='imagenet', include_top=False, input_shape=image_size)
 
-    # Freeze the layers except the last 4 layers
-    for layer in vgg_conv.layers[:-4]:
+    # Freeze the layers except the last k layers
+    for layer in vgg_conv.layers[:-k]:
         layer.trainable = False
 
     # Check the trainable status of the individual layers
@@ -33,8 +33,8 @@ def vgg16(net_input, n_classes):
         inputs=[vgg_conv.input],
         outputs=[vgg_conv.output])
     # Create the model
-    output = basic_arch.simple_cnn(extraction_model(net_input), n_classes, [(4, 2)])
-
-    print('after passing vgg output to basic arch:', output)
-
+    
+    output = extraction_model(net_input)
     return output
+
+#35.126491, -89.814351
