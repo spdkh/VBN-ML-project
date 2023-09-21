@@ -4,7 +4,7 @@
 import os
 import glob
 
-
+import inspect
 import geopy.point
 from PIL.ExifTags import TAGS, GPSTAGS
 from PIL import Image
@@ -25,11 +25,10 @@ def check_folder(log_dir):
             log_dir: str
                 directory to check
     """
-    print('\n[DATA Helper] Checking Folder')
     if os.path.exists(log_dir):
-        print('\t', log_dir, 'Folder Exists.')
+        pretty('\t', log_dir, 'Folder Exists.')
         return True
-    print('\tCreating Folder', log_dir)
+    pretty('\tCreating Folder', log_dir)
     os.makedirs(log_dir)
     return False
 
@@ -141,7 +140,7 @@ def metadata_read(img_path):
 
             return meta_data.format_decimal()
 
-    print('Metadata not found!')
+    pretty('Metadata not found!')
     return None
 
 
@@ -164,7 +163,7 @@ def visualize_predict(img, predicted_info, output_dir, gt_info='NA', error='NA')
               + predicted_info)
 
     plt.imshow(img)
-    plt.show()
+    # plt.show()
 
     plt.gca().axes.yaxis.set_ticklabels([])
     plt.gca().axes.xaxis.set_ticklabels([])
@@ -175,3 +174,33 @@ def visualize_predict(img, predicted_info, output_dir, gt_info='NA', error='NA')
 
     plt.savefig(output_dir)  # Save sample results
     plt.close("all")  # Close figures to avoid memory leak
+
+
+def pretty(*objects, color="\033[93m"):
+    reset = "\033[0m"  # Reset text color to default
+    max_len = 0
+    text_len = 20
+    for obj in objects:
+        if '\n' in str(obj):
+            max_len = max(max_len, text_len + len(str(obj).split('\n')[0]))
+            text_len = 20
+        text_len += len(str(obj))
+        text_len += 1
+
+    print('-'*min(os.get_terminal_size().columns, max_len))
+    print(color + '|')
+    print('|')
+    # print('In file:', os.path.basename(__file__))
+    # print('\t In function', inspect.currentframe().f_code.co_name)
+    
+    with open("output.txt", 'w') as f:
+        print(*objects, file=f)
+    with open("output.txt", 'r') as f:
+        lines = [line.rstrip() for line in f]
+
+    for line in lines:
+        print('|\t', line)
+    # print('\t\t', *objects)
+    print('|', reset)
+    print('-'*min(os.get_terminal_size().columns, max_len))
+

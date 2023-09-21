@@ -46,10 +46,9 @@ def parse_args():
                         # default=int(1 + 10 * (np.log10(1 + ITER // 50)))
                         )
     parser.add_argument("--validate_interval", type=int, default=1)
-    parser.add_argument("--validate_num", type=int, default=1)
     parser.add_argument("--coords", type=float, nargs='+',
-                        default=[35.133520,-89.820083,35.124821, -89.793135, 15],
-                        help='Center latitude, longitude, longitude, zoom')
+                        default=[35.134357, -89.820009, 35.118795, -89.788385, 14],
+                        help='top left latitude, longitude, buttom right latitude, longitude, zoom')
 
     return check_args(parser.parse_args())
 
@@ -61,9 +60,9 @@ def dir_pars_args():
     """
     dir_parser = argparse.ArgumentParser(add_help=False)
     dir_parser.add_argument("--data_dir", type=str,
-                            default="/home/sdjkhosh/Datasets/Agricenter_Sat",
+                            default="/home/sdjkhosh/Datasets/VisnavPNGFiles/jpg Simulated Files/Raster",
                             help='The directory of the data')
-    dir_parser.add_argument('--result_dir', type=str, default='results',
+    dir_parser.add_argument('--result_dir', type=str, default='results_ablation',
                             help='Directory name to save the generated images')
     dir_parser.add_argument("--model_weights", type=str,
                             default=pathlib.Path(
@@ -77,7 +76,6 @@ def dir_pars_args():
                             help='Desired name for the log file instead of date and time.')
     return dir_parser
 
-
 def dnn_pars_args(iterations=ITER):
     """
     DNN hyper parameters, related parameters
@@ -90,12 +88,12 @@ def dnn_pars_args(iterations=ITER):
                             choices=['max',
                                      'min_max',
                                      'prctile'])
-    dnn_parser.add_argument('--dataset', type=str, default='Satellite',
+    dnn_parser.add_argument('--dataset', type=str, default='VBN',
                             choices=['FixedCell', 'FairSIM', 'VBN'])
     dnn_parser.add_argument('--task', type=str, default=None,
                             choices=[None, 'super_resolution'],
                             help='What type of task are you trying to solve?')
-    dnn_parser.add_argument('--dnn_type', type=str, default='Simese',
+    dnn_parser.add_argument('--dnn_type', type=str, default='VBNNET',
                             choices=['DNN',
                                      'Simese',
                                      'VBNNET'],
@@ -114,9 +112,9 @@ def dnn_pars_args(iterations=ITER):
     dnn_parser.add_argument('--iteration', type=int,
                             default=iterations, help='The number of epochs to run')
     dnn_parser.add_argument('--batch_iter', type=int,
-                            default=50, help='The number of iterations to load from the batch')
+                            default=5, help='The number of iterations to load from the batch')
     dnn_parser.add_argument('--n_augment', type=int,
-                            default=10, help='The number of augmented images for each batch')
+                            default=1, help='The number of augmented images for each batch')
     dnn_parser.add_argument("--seed", type=int, default=1357)
 
     return dnn_parser

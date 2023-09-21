@@ -6,6 +6,7 @@ from pathlib import Path
 
 from src.utils.config import parse_args
 
+
 args = parse_args()
 
 # the path corresponding to current file directory

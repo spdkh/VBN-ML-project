@@ -1,0 +1,7 @@
+*.idea*
+results*
+/checkpoint
+*__pycache__*
+*desktop.ini*
+*hidden_file*
+

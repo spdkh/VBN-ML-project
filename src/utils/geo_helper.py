@@ -13,6 +13,7 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm
 
 from src.utils import const, data_helper
+from src.hidden_file import api_key
 
 
 def spherical_mercator_to_lat_lon(x, y):
@@ -74,7 +75,7 @@ _map_size = (400, 400)
 
 
 def get_static_map_image(lat, lon, zoom=15, size=_map_size,
-                         api_key='AIzaSyBI743mOAfTFDyuJt-cpTMAy-_58oq-vu8'):
+                         api_key=api_key):
     """
         Dowload google earth image of the given
         central lat, long and zoom level and desired image size

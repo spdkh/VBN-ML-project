@@ -63,4 +63,4 @@ def plot_multy(imgs, cols, rows=1, titles=None):
             i += 1
 
     # show the figure
-    plt.show()
+    # plt.show()

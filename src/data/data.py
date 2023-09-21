@@ -12,6 +12,7 @@ import tifffile as tiff
 from matplotlib import pyplot as plt
 
 from src.utils import const
+from src.utils.data_helper import pretty
 
 
 class Data(ABC):
@@ -46,7 +47,7 @@ class Data(ABC):
                     / self.data_types['x']
 
         self.input_dim = self.load_sample(input_dir)
-        print('Input Image shape:', self.input_dim)
+        pretty('Input Image shape:', self.input_dim)
 
         # Load Output Sample
         output_dir = const.DATA_DIR \
@@ -54,7 +55,7 @@ class Data(ABC):
                      / self.data_types['y']
 
         self.output_dim = self.load_sample(output_dir)
-        print('Output Image shape:', self.output_dim)
+        pretty('Output Image shape:', self.output_dim)
 
         for data_group, data_dir in self.data_groups.items():
             self.data_info[data_group] = \
@@ -63,7 +64,7 @@ class Data(ABC):
                 self.data_info[data_type + data_group] = \
                     self.data_info[data_group] / values
 
-        print(self.data_info)
+        pretty(self.data_info)
 
     def load_sample(self, parent_path, show=0, sep='\t'):
         """
@@ -86,6 +87,6 @@ class Data(ABC):
                 plt.show()
         elif any(ext in path for ext in table_formats):
             sample = pd.read_csv(path, sep=sep)
-            print(sample)
+            pretty(sample)
             sample_size = [1]
         return sample_size

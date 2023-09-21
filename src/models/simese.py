@@ -5,6 +5,7 @@
     date: Aug 2023
 """
 import os
+import sys
 import psutil
 import datetime
 from pathlib import Path
@@ -14,6 +15,7 @@ from tqdm import tqdm
 import numpy as np
 import visualkeras
 import sklearn
+import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Lambda, Dense
@@ -24,6 +26,8 @@ from src.utils import const, data_helper, norm_helper, geo_helper
 from src.utils.architectures import transfer_learning, feature_extraction
 from src.utils.architectures.transfer_learning import vgg16
 from src.utils.config import dnn_pars_args, dir_pars_args
+from src.utils.data_helper import pretty
+
 
 
 class Simese(VBNNET):
@@ -40,10 +44,10 @@ class Simese(VBNNET):
         VBNNET.__init__(self, args)
 
         # build the positive and negative image pairs
-        print("[Simese] preparing positive and negative pairs...")
+        pretty("Preparing positive and negative pairs...")
         self.pairs = {}
         for mode in ['train', 'val', 'test']:
-            print('\t', mode, 'pairs...')
+            pretty('\t', mode, 'pairs...')
             self.pairs['x' + mode], self.pairs['y' + mode] = \
                 self.make_pairs(self.data.data_info['x' + mode],
                                 np.asarray(self.data.data_info['y' + mode]))
@@ -51,11 +55,11 @@ class Simese(VBNNET):
         self.build_model()
 
     def build_model(self):
-        print("[Simese] building siamese network...")
+        pretty("Building siamese network...")
         img_a = Input(shape=self.data.input_dim)
         img_b = Input(shape=self.data.input_dim)
-        vgg_o = vgg16(self.model_input, 4)
-        self.model_output = feature_extraction.build_siamese_model(vgg_o)
+        # vgg_o = vgg16(self.model_input, 4)
+        self.model_output = feature_extraction.build_siamese_model(self.model_input)
         self.feature_extractor = Model(self.model_input,
                                        self.model_output)
         feats_a = self.feature_extractor(img_a)
@@ -68,12 +72,12 @@ class Simese(VBNNET):
                            outputs=outputs)
 
         # compile the model
-        print("[Simese] compiling model...")
+        pretty("Compiling model...")
         self.model.compile(loss="binary_crossentropy",
                            optimizer="adam",
                            metrics=["accuracy"])
 
-        print('[Simese] Model Summary:\n', self.model.summary())
+        pretty('Model Summary:\n', self.model.summary())
         # tf.keras.utils.plot_model(self.model, to_file='Model.png',
         # show_shapes=True, dpi=64, rankdir='LR')
         # write to disk
@@ -90,10 +94,6 @@ class Simese(VBNNET):
         self.batch_id['train'] = 1
         batch_id = 1
         loss_record = []
-
-        process = psutil.Process(os.getpid())
-        memory_usage = process.memory_info().rss / (1024 ** 3)  # Memory usage in GB
-        print(f"['Simese']\tMemory Usage: {memory_usage} GB")
 
         with tqdm(total=self.args.batch_iter) as pbar:
             # while batch_id != 0:
@@ -115,25 +115,25 @@ class Simese(VBNNET):
 
                 loss_record.append(batch_loss)
 
-                # print('Train with augmented data:')
-                # for i, (img, batch_pair) in enumerate(train_datagen.flow(
-                #         batch_pairs[1, :, :, :, :],
-                #         y=batch_outputs,
-                #         batch_size=self.args.batch_size,
-                #         shuffle=True,
-                #         seed=self.args.seed,
-                #         ignore_class_split=True,
-                # )):
-                #     # output = self.model.predict(img)
-                #     # print(i, img.shape, batch_output.shape)
-                #     # output = norm_helper.min_max_norm(output)
-                #     batch_loss = self.model.train_on_batch([batch_pairs[0, :, :, :, :],
-                #                                         batch_pair],
-                #                                         batch_outputs)
-                #     loss_record.append(batch_loss)
+                # pretty('Train with augmented data:')
+                for i, (batch_pair, batch_output) in enumerate(train_datagen.flow(
+                        batch_pairs[1, :, :, :, :],
+                        y=batch_outputs,
+                        batch_size=self.args.batch_size,
+                        shuffle=True,
+                        seed=self.args.seed,
+                        ignore_class_split=True,
+                )):
+                    # output = self.model.predict(img)
+                    # pretty(i, img.shape, batch_output.shape)
+                    # output = norm_helper.min_max_norm(output)
+                    batch_loss = self.model.train_on_batch([batch_pairs[0, :, :, :, :],
+                                                        batch_pair],
+                                                        batch_outputs)
+                    loss_record.append(batch_loss)
                 
-                #     if i > self.args.n_augment:
-                #         break
+                    if i > self.args.n_augment:
+                        break
 
                 elapsed_time = datetime.datetime.now() - start_time
                 batch_loss = np.mean(loss_record)
@@ -164,13 +164,15 @@ class Simese(VBNNET):
         metrics = {'Acc': [], 'BCE': []}
 
         imgs, batch_output = self.load_batch(mode, batch_id)
-        outputs = self.model.predict([imgs[0, :, :, :, :],
-                                     imgs[1, :, :, :, :]])
+        last_ws = self.model.layers[-6:].get_weights()
+        pretty('WEIGHTS:\n', last_ws)
+        outputs = self.model.predict_on_batch([tf.convert_to_tensor(imgs[0, :, :, :, :]),
+                                     tf.convert_to_tensor(imgs[1, :, :, :, :])])
 
         thr = 0.5
         outputs = np.where(outputs > thr, 1, 0)
         # for i, output in enumerate(outputs):
-        # print(batch_output, outputs)
+        # pretty(batch_output, outputs)
         metrics['Acc'].append(sklearn.metrics.accuracy_score(batch_output,
                                                              outputs))
         metrics['BCE'].append(sklearn.metrics.log_loss(batch_output,
@@ -228,7 +230,7 @@ class Simese(VBNNET):
                 # randomly pick an image that belongs to the *same* class label
                 idx_b = np.random.choice(range(len(images)))
                 label_b = self.data.norm_geo2geo(labels[idx_b])
-                # print(geo_helper.overlapped(label, label, (400, 400)))
+                # pretty(geo_helper.overlapped(label, label, (400, 400)))
                 # quit()
                 if geo_helper.overlapped(label, label_b, (400, 400)):
                     pos_img = images[idx_b]
@@ -296,7 +298,7 @@ def pair_batch_load(pairs, batch_size, iteration):
     for i in range(batch_size):
         pair = pairs[i + iteration]
         image_batch.append([])
-        # print('Empty batch:', image_batch[i])
+        # pretty('Empty batch:', image_batch[i])
         for j in range(2):
             img = data_helper.imread(pair[j])
             image_batch[i].append(img)

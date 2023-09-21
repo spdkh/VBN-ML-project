@@ -120,6 +120,6 @@ def preprocess_real(real_img, blurr=5):
         img = cv2.GaussianBlur(img, (blurr, blurr), 0)
         _, img = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         plt.imshow(img, cmap='gray')
-        plt.show()
+        # plt.show()
         final_img[:, :, i] = np.asarray(img, dtype=np.float32)
     return final_img / 255

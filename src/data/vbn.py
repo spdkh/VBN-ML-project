@@ -11,6 +11,8 @@ from tensorflow import keras
 
 from src.data.data import Data
 from src.utils import norm_helper, data_helper, const
+from src.utils.data_helper import pretty
+
 
 
 class VBN(Data):
@@ -37,17 +39,16 @@ class VBN(Data):
             configuration after init parent
         """
 
-        print('\nNumber of images in the path:', len(self.img_paths))
+        pretty('Number of images in the path:', len(self.img_paths))
 
         text_paths = data_helper.find_files(const.DATA_DIR, 'txt')
         text_paths.sort()
-        print('Number of texts in the path:', len(text_paths))
+        pretty('Number of texts in the path:', len(text_paths))
 
         meta_df = pd.read_csv(text_paths[0], sep=':', index_col=0,
                               names=[0])
 
-        print('\nFirst metadata sample:')
-        print(meta_df)
+        pretty('First metadata sample:\n', meta_df)
 
         meta_dfs = []
         for i, meta_data in enumerate(text_paths[:-1]):
@@ -56,15 +57,13 @@ class VBN(Data):
 
         meta_df = pd.concat(meta_dfs, axis=1)
 
-        print('All metadata:')
-        print(meta_df)
+        pretty('All metadata:\n', meta_df)
 
         self.network_out = meta_df.loc['Platform_position_LatLongAlt', :]
         self.network_out = \
             self.network_out.str.split(" ", expand=True).iloc[:, 1:-1].astype('float64')
         self.network_out.columns = ['Lat', 'Long', 'Alt']
-        print('Network Outputs:')
-        print(self.network_out)
+        pretty('Network Outputs:\n', self.network_out)
         self.geo_calcs()
         self.my_train_test_split()
 
@@ -78,8 +77,8 @@ class VBN(Data):
         self.org_out_min = np.min(self.network_out, axis=0)
         self.org_out_max = np.max(self.network_out, axis=0)
 
-        print('Min Lat, Long, Alt:', self.org_out_min)
-        print('Max Lat, Long, Alt:', self.org_out_max)
+        pretty('Minimum:\n', self.org_out_min
+                 , '\nMaximum:\n', self.org_out_max)
 
         coords_ul = (self.org_out_min['Lat'], self.org_out_min['Long'])
         coords_ur = (self.org_out_max['Lat'], self.org_out_min['Long'])
@@ -89,17 +88,18 @@ class VBN(Data):
         land_width = geopy.distance.geodesic(coords_ul, coords_ur).km
         land_height = geopy.distance.geodesic(coords_ul, coords_dl).km
         img_diagonal = geopy.distance.geodesic(coords_ul, coords_dr).km
-        print('Area Diagonal Distance:', img_diagonal, ' Km')
-        print('Width =', land_width, 'Km')
-        print('Height =', land_height, 'Km')
 
         # only applicable if the images form a recangle overall
         land_area = land_width * land_height
-        print('Land area = ', land_area, 'Km^2')
 
         # only applicable if the images forming a rectangle do not overlap
         img_area = land_area / len(self.network_out.index)
-        print('Area covered by each image =', img_area, 'Km^2')
+
+        pretty('Area Diagonal Distance:', img_diagonal, ' Km',
+                     'Width =', land_width, 'Km',
+                     'Height =', land_height, 'Km',
+                     'Land area = ', land_area, 'Km^2',
+                     'Area covered by each image =', img_area, 'Km^2')
 
     def my_train_test_split(self):
         """
@@ -108,13 +108,12 @@ class VBN(Data):
         y_normalized = np.asarray([norm_helper.min_max_norm(self.network_out.loc[:, col])
                                    for col in self.network_out.columns]).T
         y_normalized = pd.DataFrame(y_normalized, columns=self.network_out.columns)
-        print('Normalized outputs (y_normalized):')
-        print(y_normalized)
+        pretty('Normalized outputs (y_normalized):\n', y_normalized)
 
         class_ids = keras.utils.to_categorical(range(len(self.network_out.columns))).tolist()
-        print('class ids:', class_ids, np.shape(class_ids))
+        pretty('class ids:', class_ids, np.shape(class_ids))
 
-        print(np.shape(self.img_paths), np.shape(y_normalized))
+        # print(np.shape(self.img_paths), np.shape(y_normalized))
         self.data_info['xtrain'], x_test, self.data_info['ytrain'], y_test \
             = train_test_split(self.img_paths, y_normalized,
                                test_size=0.2,
@@ -130,13 +129,13 @@ class VBN(Data):
         sample_input_img = data_helper.imread(self.data_info['xtrain'][0])
         self.input_dim = np.shape(sample_input_img)
         self.output_dim = 3  # np.shape(class_ids)
-        print('Sample image size:', self.input_dim)
-        print('X_train size:', np.shape(self.data_info['xtrain']))
-        print('X_val size:', np.shape(self.data_info['xval']))
-        print('X_test size:', np.shape(self.data_info['xtest']))
-        print('Y_train size:', np.shape(self.data_info['ytrain']))
-        print('Y_val size:', np.shape(self.data_info['yval']))
-        print('Y_test size:', np.shape(self.data_info['ytest']))
+        pretty('Sample image size:', self.input_dim,
+                     '\nX_train size:', np.shape(self.data_info['xtrain']),
+                     '\nX_val size:', np.shape(self.data_info['xval']),
+                     '\nX_test size:', np.shape(self.data_info['xtest']),
+                     '\nY_train size:', np.shape(self.data_info['ytrain']),
+                     '\nY_val size:', np.shape(self.data_info['yval']),
+                     '\nY_test size:', np.shape(self.data_info['ytest']))
 
     def norm_geo2geo(self, data):
         """

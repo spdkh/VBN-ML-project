@@ -13,6 +13,8 @@ from matplotlib import pyplot as plt
 
 from src.data.vbn import VBN
 from src.utils import data_helper, const, geo_helper
+from src.utils.data_helper import pretty
+
 
 
 class Satellite(VBN):
@@ -25,41 +27,36 @@ class Satellite(VBN):
             args
         """
         VBN.__init__(self, args)
+
+        if not data_helper.check_folder(const.DATA_DIR):
+            pretty('Downloading satellite images...')
+            self.gen_data()
+
         self.data_types = {'x': 'images'}
         self.img_paths = data_helper.find_files(const.DATA_DIR / self.data_types['x'],
                                                 'jpg')
         self.img_paths.sort()
-        if not data_helper.check_folder(const.DATA_DIR):
-            print('[Satellite] Downloading satellite images...')
-            self.gen_data()
 
     def config(self):
         """
             configuration after init parent
         """
-        print('\nNumber of images in the path:', len(self.img_paths))
-
-        # meta_df = pd.read_csv(text_paths[0], sep=':', index_col=0,
-        #                       names=[0])
-        #
-        # print('\nFirst metadata sample:')
-        # print(meta_df)
+        pretty('Number of images in the path:', len(self.img_paths))
 
         meta_dfs = []
         for path in self.img_paths:
             df_i = pd.Series(map(float, os.path.basename(path).split('.jpg')[0].split('_')))
             meta_dfs.append(df_i)
 
-        print(meta_dfs)
+        pretty('First metadata sample:\n',meta_dfs)
         meta_df = pd.concat(meta_dfs, axis=1).transpose()
         meta_df.columns = ['columns', 'row', 'Lat', 'Long', 'Alt']
 
-        print('All metadata:')
-        print(meta_df)
+        pretty('All metadata:\n', meta_df)
 
         self.network_out = meta_df.loc[:, ['Lat', 'Long', 'Alt']]
-        print('Network Outputs:')
-        print(self.network_out)
+        pretty('Network Outputs\n:', self.network_out)
+        
         self.geo_calcs()
         self.my_train_test_split()
 
@@ -92,10 +89,10 @@ class Satellite(VBN):
                                               map_zoom,
                                               map_size=map_size)
 
-        print("[INFO]")
-        print("\tCenter (Latitude, Longitude):", center_lat, center_lon)
-        print("\tTop Left (Latitude, Longitude):", top_left_lat, top_left_lon)
-        print("\tBottom Right (Latitude, Longitude):", bottom_right_lat, bottom_right_lon)
+        pretty("[INFO]"
+            , "\n\tCenter (Latitude, Longitude):", center_lat, center_lon
+            , "\n\tTop Left (Latitude, Longitude):", top_left_lat, top_left_lon
+            , "\n\tBottom Right (Latitude, Longitude):", bottom_right_lat, bottom_right_lon)
 
         img = Image.open(BytesIO(map_data))
         plt.imshow(img)
@@ -118,10 +115,10 @@ class Satellite(VBN):
                                        (bottom_right_lat, bottom_right_lon),
                                        (400, 400),
                                        raster_zoom=18,
-                                       overlap=60)
+                                       overlap=0)
 
         geo_helper.gen_raster_from_map((top_left_lat, top_left_lon),
                                        (bottom_right_lat, bottom_right_lon),
                                        (400, 400),
                                        raster_zoom=19,
-                                       overlap=60)
+                                       overlap=0)

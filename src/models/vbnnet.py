@@ -5,6 +5,8 @@
     date: 2023
 """
 import os
+import sys
+import psutil
 import datetime
 from pathlib import Path
 
@@ -12,6 +14,7 @@ import geopy
 from tqdm import tqdm
 import numpy as np
 import visualkeras
+import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import Model
 
@@ -20,6 +23,8 @@ from src.utils import const, data_helper, norm_helper
 from src.utils.architectures.transfer_learning import vgg16
 from src.utils.config import dnn_pars_args, dir_pars_args
 from src.utils.architectures import basic_arch
+from src.utils.data_helper import pretty
+
 
 
 
@@ -38,8 +43,8 @@ class VBNNET(DNN):
         vgg_o = vgg16(self.model_input, 4)        
         self.model_output = basic_arch.simple_cnn(vgg_o, 3, [(4, 2)])
 
-        print('[VBNNET] model input:', self.model_input)
-        print('[VBNNET] model output:', self.model_output)
+        pretty(self.model_input)
+        pretty(self.model_output)
         self.model = Model(self.model_input,
                            self.model_output)
 
@@ -47,8 +52,8 @@ class VBNNET(DNN):
         self.model.compile(loss='mean_absolute_error',
                            optimizer='adam',
                            metrics=['mean_absolute_error'])
-        print('[VBNNET] Model Summary: \n', self.model.summary())
-        print()
+        pretty(self.model.summary())
+
         # tf.keras.utils.plot_model(self.model, to_file='Model.png',
         # show_shapes=True, dpi=64, rankdir='LR')
         # write to disk
@@ -77,11 +82,11 @@ class VBNNET(DNN):
                     horizontal_flip=True,
                     fill_mode='nearest')
 
-                # print(batch_imgs.shape, batch_outputs.shape)
+                # pretty(batch_imgs.shape, batch_outputs.shape)
                 batch_loss = self.model.train_on_batch(batch_imgs, batch_outputs)
                 loss_record.append(batch_loss)
 
-                # print('Train with augmented data:')
+                # pretty('Train with augmented data:')
                 for i, (img, batch_output) in enumerate(train_datagen.flow(
                         batch_imgs,
                         y=batch_outputs,
@@ -91,7 +96,7 @@ class VBNNET(DNN):
                         ignore_class_split=True,
                 )):
                     # output = self.model.predict(img)
-                    # print(i, img.shape, batch_output.shape)
+                    # pretty(i, img.shape, batch_output.shape)
                     # output = norm_helper.min_max_norm(output)
                     batch_loss = self.model.train_on_batch(img, batch_output)
                     loss_record.append(batch_loss)
@@ -119,7 +124,7 @@ class VBNNET(DNN):
         """
             iterate over epochs
         """
-        print('[VBNNET] Training...')
+        pretty('Training...')
 
         text = ''
         index = 0
@@ -133,7 +138,7 @@ class VBNNET(DNN):
                     text += "\n"
 
         text = text.replace(' ', '.')
-        # print(text)
+        # pretty(text)
         data_helper.check_folder(const.WEIGHTS_DIR)
         data_helper.check_folder(const.SAMPLE_DIR)
         data_helper.check_folder(const.SAMPLE_DIR / 'val')
@@ -152,6 +157,7 @@ class VBNNET(DNN):
             elapsed_time = datetime.datetime.now() - start_time
 
             model_loss = self.train_epoch(iteration=iteration)
+            
             self.loss_record.append(model_loss)
             print(iteration + 1, 'epoch: time:', elapsed_time, 'loss =', model_loss)
 
@@ -181,8 +187,8 @@ class VBNNET(DNN):
                    'err_meter': []}
 
         imgs, batch_output = self.load_batch(mode, batch_id)
-        # print(list(imgs.values()))
-        outputs = self.model.predict(np.asarray(list(imgs.values())))
+        # pretty(list(imgs.values()))
+        outputs = self.model.predict_on_batch(tf.convert_to_tensor((list(imgs.values()))))
 
         for i, ((img_name, img), output) in enumerate(zip(imgs.items(), outputs)):
             output = norm_helper.min_max_norm(output)
@@ -239,18 +245,18 @@ class VBNNET(DNN):
             ext = 'test ' + str(idx)
             output_dir = const.SAMPLE_DIR / ext
             idx += 1
-            print('Path', output_dir, 'already exists; renaming...')
+            pretty('Path', output_dir, 'already exists; renaming...')
         data_helper.check_folder(output_dir)
         mode = 'test'
 
-        print('Processing ', len(self.data.data_info['x' + mode]), 'Test images...')
+        pretty('Processing ', len(self.data.data_info['x' + mode]), 'Test images...')
 
         for img_id, _ in enumerate(self.data.data_info['x' + mode]):
             self.validate(sample=1, sample_id=img_id, mode=mode)
 
         if self.args.extra_test is not None:
             imgs_dirs = data_helper.find_files(self.args.extra_test, 'JPG')
-            print('Processing ', len(imgs_dirs), 'extra test images...')
+            pretty('Processing ', len(imgs_dirs), 'extra test images...')
             for img_dir in imgs_dirs:
                 img_name = img_dir.split('/')[-1]
 
@@ -260,10 +266,10 @@ class VBNNET(DNN):
                 # img = img.copy()
                 meta_data = data_helper.metadata_read(img_dir)
 
-                predicted = self.model.predict(np.expand_dims(img, 0))[0]
+                predicted = self.model.predict(tf.convert_to_tensor(np.expand_dims(img, 0)))[0]
                 predicted_geo = list(self.norm_geo2geo(predicted))[:-1]
                 err_m = geopy.distance.geodesic(predicted_geo, meta_data).m
-                # print(err_m)
+                # pretty(err_m)
 
                 data_helper.visualize_predict(img,
                                str(predicted_geo),
